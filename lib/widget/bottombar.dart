@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:logilearn/view/home_view.dart';
 import 'package:logilearn/view/review_attempt_view.dart';
+import 'package:logilearn/view/account_view.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -15,9 +16,7 @@ class BottomNavBar extends StatelessWidget {
       case 0:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const HomeView(),
-          ),
+          MaterialPageRoute(builder: (context) => const HomeView()),
         );
         break;
       case 1:
@@ -27,8 +26,9 @@ class BottomNavBar extends StatelessWidget {
         );
         break;
       case 2:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Halaman Akun belum tersedia 👷‍♂️')),
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AccountView()),
         );
         break;
     }
