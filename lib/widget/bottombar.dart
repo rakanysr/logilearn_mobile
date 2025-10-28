@@ -1,14 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:logilearn/view/home_view.dart';
+import 'package:logilearn/view/review_attempt_view.dart';
+import 'package:logilearn/view/account_view.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
-  final Function(int) onTap;
+  final Function(int)? onTap;
 
-  const BottomNavBar({
-    super.key,
-    required this.currentIndex,
-    required this.onTap,
-  });
+  const BottomNavBar({super.key, required this.currentIndex, this.onTap});
+
+  void _handleTap(BuildContext context, int index) {
+    if (index == currentIndex) return; // biar gak reload page yang sama
+
+    switch (index) {
+      case 0:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeView()),
+        );
+        break;
+      case 1:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const ReviewAttemptView()),
+        );
+        break;
+      case 2:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AccountView()),
+        );
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +49,12 @@ class BottomNavBar extends StatelessWidget {
       ),
       child: BottomNavigationBar(
         currentIndex: currentIndex,
-        onTap: onTap,
+        onTap: (index) {
+          if (onTap != null) {
+            onTap!(index);
+          }
+          _handleTap(context, index);
+        },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
         selectedItemColor: Colors.black87,
@@ -40,7 +69,7 @@ class BottomNavBar extends StatelessWidget {
             label: 'Beranda',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_turned_in),
+            icon: Icon(Icons.assignment_turned_in_outlined),
             activeIcon: Icon(Icons.assignment_turned_in),
             label: 'Attempts',
           ),
@@ -54,4 +83,3 @@ class BottomNavBar extends StatelessWidget {
     );
   }
 }
-
