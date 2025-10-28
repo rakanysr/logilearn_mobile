@@ -125,13 +125,13 @@ class _RegistrasiScreenState extends State<RegistrasiScreen> {
             debugPrint('Password: $password');
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF2977FF), // Warna biru sesuai prototype
-            foregroundColor: Colors.white, // Warna teks putih
+            backgroundColor: Color(0xFF2977FF),
+            foregroundColor: Colors.white,
             padding: EdgeInsets.symmetric(vertical: 15),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8.0),
             ),
-            minimumSize: Size(double.infinity, 0), // Lebar penuh
+            minimumSize: Size(double.infinity, 0),
           ),
           child: Text(
             'LANJUTKAN',
