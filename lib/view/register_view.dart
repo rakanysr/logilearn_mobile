@@ -1,6 +1,7 @@
 // lib/screens/registrasi_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class RegistrasiScreen extends StatefulWidget {
   const RegistrasiScreen({super.key});
@@ -33,7 +34,9 @@ class _RegistrasiScreenState extends State<RegistrasiScreen> {
         ),
         title: Text(
           'Registrasi',
-          style: TextStyle(fontWeight: FontWeight.w900),
+          style: GoogleFonts.inter(
+            textStyle: TextStyle(fontWeight: FontWeight.w900),
+          ),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
@@ -47,13 +50,17 @@ class _RegistrasiScreenState extends State<RegistrasiScreen> {
           children: <Widget>[
             Text(
               'Untuk pengguna baru, anda bisa membuat akun dengan memasukkan username baru dan password baru.',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: GoogleFonts.inter(
+                textStyle: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
             ),
             SizedBox(height: 30),
             //Username Input
             Text(
               'Username',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: GoogleFonts.inter(
+                textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
             SizedBox(height: 8),
             TextField(
@@ -73,7 +80,9 @@ class _RegistrasiScreenState extends State<RegistrasiScreen> {
             //Password Input
             Text(
               'Kata Sandi',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: GoogleFonts.inter(
+                textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
             SizedBox(height: 8),
             TextField(
