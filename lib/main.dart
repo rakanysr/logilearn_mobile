@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'view/login_view.dart';
+import 'view/startup_view.dart';
 
 void main() {
   runApp(const QuizApp());
@@ -14,7 +14,7 @@ class QuizApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Quiz Logika',
       theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Poppins'),
-      home: const LoginView(),
+      home: const StartupView(),
     );
   }
 }

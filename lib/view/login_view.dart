@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 import 'home_view.dart';
+import 'register_view.dart';
+
+class User {
+  final String username;
+  final String password;
+
+  User({required this.username, required this.password});
+}
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -9,10 +17,50 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
+  //data user
+  final List<User> listUser = [
+    User(username: "admin", password: "123")
+  ];
+
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   
   bool _isPasswordVisible = false;
+
+  //cek login
+  bool _login(String username, String password){
+    for(var user in listUser){
+      if(user.username == username && user.password == password){
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _handleLogin(){
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if(_login(username, password)){
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Berhasil login!"),
+          backgroundColor: Color(0xFF2977FF),
+        )
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) =>  const HomeView(),)
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Username atau Password salah!"),
+          backgroundColor: Colors.red,
+        )
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -32,7 +80,7 @@ class _LoginViewState extends State<LoginView> {
             height: screenSize.height * 0.45,
             width: double.infinity,
             decoration: const BoxDecoration(
-              color: Color(0xFF4A90E2), 
+              color: Color(0xFF2977FF), 
             ),
           ),
           Positioned(
@@ -154,13 +202,10 @@ class _LoginViewState extends State<LoginView> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder:(context) => const HomeView(),)
-                          );
+                          _handleLogin();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4A90E2),
+                          backgroundColor: const Color(0xFF2977FF),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -199,10 +244,15 @@ class _LoginViewState extends State<LoginView> {
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: () {
-                          
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RegistrasiScreen(),
+                            )
+                          );
                         },
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF4A90E2)),
+                          side: const BorderSide(color: Color(0xFF2977FF)),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -213,7 +263,7 @@ class _LoginViewState extends State<LoginView> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF4A90E2),
+                            color: Color(0xFF2977FF),
                           ),
                         ),
                       ),
