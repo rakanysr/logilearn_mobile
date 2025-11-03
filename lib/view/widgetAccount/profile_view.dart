@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class SecurityView extends StatefulWidget {
-  const SecurityView({super.key});
+class ProfileView extends StatefulWidget {
+  const ProfileView({super.key});
 
   @override
-  State<SecurityView> createState() => _SecurityViewState();
+  State<ProfileView> createState() => _ProfileViewState();
 }
 
-class _SecurityViewState extends State<SecurityView> {
+class _ProfileViewState extends State<ProfileView> {
   bool _isPasswordVisible = false;
 
   @override
@@ -18,7 +18,7 @@ class _SecurityViewState extends State<SecurityView> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          'Keamanan',
+          'Detail Profil',
           style: GoogleFonts.getFont(
             'Inter',
             color: Colors.black87,

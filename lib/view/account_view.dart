@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:logilearn/view/widgetAccount/Change_Password_View.dart';
 import 'package:logilearn/widget/bottombar.dart';
-import 'package:logilearn/view/widgetAccount/security_view.dart';
+import 'package:logilearn/view/widgetAccount/profile_view.dart';
+import 'package:logilearn/view/login_view.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AccountView extends StatelessWidget {
@@ -64,7 +66,7 @@ class AccountView extends StatelessWidget {
                         children: [
                           const CircleAvatar(
                             radius: 28,
-                            backgroundImage: const AssetImage(
+                            backgroundImage: AssetImage(
                               'assets/images/Mascot buntung.png',
                             ),
                           ),
@@ -95,7 +97,14 @@ class AccountView extends StatelessWidget {
                             ),
                           ),
                           ElevatedButton.icon(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ProfileView(),
+                                ),
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               side: const BorderSide(color: Color(0xFF2977FF)),
@@ -133,7 +142,7 @@ class AccountView extends StatelessWidget {
                       children: [
                         Expanded(child: _buildStatCard('Section Selesai', '0')),
                         const SizedBox(width: 12),
-                        Expanded(child: _buildStatCard('Level Selesai', '0')),
+                        Expanded(child: _buildStatCard('Level Selesai', '3')),
                       ],
                     ),
                   ),
@@ -142,12 +151,12 @@ class AccountView extends StatelessWidget {
 
                   _buildMenuItem(
                     icon: Icons.lock_outline,
-                    text: 'Keamanan',
+                    text: 'Ganti Sandi',
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const SecurityView(),
+                          builder: (context) => const ChangePasswordView(),
                         ),
                       );
                     },
@@ -253,85 +262,93 @@ class AccountView extends StatelessWidget {
       ),
     );
   }
-}
 
-void _showLogoutDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Center(
-          child: Text(
-            'Keluar',
-            style: GoogleFonts.getFont(
-              'Inter',
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Center(
+            child: Text(
+              'Keluar',
+              style: GoogleFonts.getFont(
+                'Inter',
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
             ),
           ),
-        ),
-        content: Text(
-          'Apakah anda yakin untuk keluar dari akun anda?',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.getFont(
-            'Inter',
-            fontSize: 14,
-            color: Colors.black87,
+          content: Text(
+            'Apakah anda yakin untuk keluar dari akun anda?',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.getFont(
+              'Inter',
+              fontSize: 14,
+              color: Colors.black87,
+            ),
           ),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFA8A8),
-                  minimumSize: const Size(100, 40),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFA8A8),
+                    minimumSize: const Size(100, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'TIDAK',
+                    style: GoogleFonts.getFont(
+                      'Inter',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: Text(
-                  'TIDAK',
-                  style: GoogleFonts.getFont(
-                    'Inter',
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2977FF),
+                    minimumSize: const Size(100, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginView(),
+                      ),
+                      (Route<dynamic> route) => false,
+                    );
+                  },
+                  child: Text(
+                    'YA',
+                    style: GoogleFonts.getFont(
+                      'Inter',
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2977FF),
-                  minimumSize: const Size(100, 40),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  // Tambahkan logout di sini
-                },
-                child: Text(
-                  'YA',
-                  style: GoogleFonts.getFont(
-                    'Inter',
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    },
-  );
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
