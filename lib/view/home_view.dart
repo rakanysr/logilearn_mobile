@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:logilearn/widget/bottombar.dart';
 
 class HomeView extends StatefulWidget {
@@ -20,6 +21,7 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF2F80ED),
       'image': 'assets/images/Mascot halo.png',
       'unlockedLevel': 3,
+      'levelScores': [100, 85, 90],
     },
     {
       'section': 'SECTION 2',
@@ -27,6 +29,7 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF2D9CDB),
       'image': 'assets/images/Mascot banyak.png',
       'unlockedLevel': 1,
+      'levelScores': [95],
     },
     {
       'section': 'SECTION 3',
@@ -34,6 +37,7 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF27AE60),
       'image': 'assets/images/Mascot buntung.png',
       'unlockedLevel': 0,
+      'levelScores': [],
     },
   ];
 
@@ -41,56 +45,55 @@ class _HomeViewState extends State<HomeView> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) {
-        return Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.8, end: 1.0),
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutBack,
-            builder: (context, scale, child) {
-              return Transform.scale(
-                scale: scale,
-                child: AlertDialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  title: const Text(
-                    "Level Terkunci 🔒",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  content: const Text(
-                    "Selesaikan level sebelumnya dulu untuk membuka level ini.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.black54),
-                  ),
-                  actionsAlignment: MainAxisAlignment.center,
-                  actions: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Oke"),
-                    ),
-                  ],
+      builder: (_) => Center(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.8, end: 1.0),
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutBack,
+          builder: (context, scale, child) {
+            return Transform.scale(
+              scale: scale,
+              child: AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              );
-            },
-          ),
-        );
-      },
+                title: Text(
+                  "Level Terkunci",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                content: Text(
+                  "Selesaikan level sebelumnya dulu untuk membuka level ini.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(color: Colors.black54),
+                ),
+                actionsAlignment: MainAxisAlignment.center,
+                actions: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("Oke", style: GoogleFonts.inter()),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
   void _navigateToLevelDetail(int level) {
-    // Navigasi ke halaman detail level
+    // ke halaman detail level
   }
 
   @override
@@ -101,256 +104,316 @@ class _HomeViewState extends State<HomeView> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  setState(() => _isDropdownOpen = !_isDropdownOpen);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: screenWidth,
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 18,
-                    horizontal: 20,
-                  ),
-                  decoration: BoxDecoration(
-                    color: selected['color'],
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(18),
-                      bottomRight: Radius.circular(18),
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(top: 15.0, left: 15.0),
+                    child: Text(
+                      'Selamat Datang, Jakarta Jawa',
+                      style: GoogleFonts.inter(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: selected['color'].withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${selected['section']}, LEVEL 1',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            selected['title'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Icon(
-                        _isDropdownOpen
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
 
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 350),
-                crossFadeState: _isDropdownOpen
-                    ? CrossFadeState.showFirst
-                    : CrossFadeState.showSecond,
-                firstChild: Column(
-                  children: List.generate(_sections.length, (index) {
-                    final s = _sections[index];
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedSectionIndex = index;
-                          _isDropdownOpen = false;
-                        });
-                      },
-                      child: Container(
-                        width: screenWidth * 0.9,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: s['color'],
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: s['color'].withOpacity(0.3),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s['section'],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              s['title'],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-                secondChild: const SizedBox.shrink(),
-              ),
-
-              const SizedBox(height: 20),
-
-              Image.asset(selected['image'], height: 120),
-              const SizedBox(height: 12),
-              Text(
-                '${selected['section']}, LEVEL 1',
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-              Text(
-                selected['title'],
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20.0),
-                child: Column(
-                  children: List.generate(10, (index) {
-                    bool isLeft = index.isEven;
-                    bool isUnlocked = index < selected['unlockedLevel'];
-                    double progress = isUnlocked ? (index + 1) * 10 : 0;
-
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        left: isLeft ? 40 : 120,
-                        right: isLeft ? 120 : 40,
-                        top: 20,
-                        bottom: 10,
-                      ),
-                      child: GestureDetector(
+                  // dropdown header
+                  Container(
+                    width: screenWidth,
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
                         onTap: () {
-                          if (isUnlocked) {
-                            _navigateToLevelDetail(index + 1);
-                          } else {
-                            _showLockedPopup();
-                          }
+                          setState(() => _isDropdownOpen = !_isDropdownOpen);
                         },
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 18,
+                            horizontal: 20,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected['color'],
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: selected['color'].withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${selected['section']}',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    selected['title'],
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Icon(
+                                _isDropdownOpen
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                  Image.asset(selected['image'], height: 120),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${selected['section']}',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  Text(
+                    selected['title'],
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+
+                  // grid zigzag
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20.0),
+                    child: Column(
+                      children: List.generate(10, (index) {
+                        final isUnlocked = index < selected['unlockedLevel'];
+                        final scores = selected['levelScores'] as List<dynamic>;
+                        final dx = (index % 4 == 0)
+                            ? -screenWidth * 0.2
+                            : (index % 4 == 1)
+                            ? 0.0
+                            : (index % 4 == 2)
+                            ? screenWidth * 0.2
+                            : 0.0;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20.0),
+                          child: Transform.translate(
+                            offset: Offset(dx, 0),
+                            child: GestureDetector(
+                              onTap: () {
+                                if (isUnlocked) {
+                                  _navigateToLevelDetail(index + 1);
+                                } else {
+                                  _showLockedPopup();
+                                }
+                              },
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Container(
+                                        width: 88,
+                                        height: 88,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isUnlocked
+                                              ? selected['color']
+                                              : Colors.grey[300],
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  (isUnlocked
+                                                          ? selected['color']
+                                                          : Colors.grey[300])!
+                                                      .withOpacity(0.3),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 6),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              '${index + 1}',
+                                              style: GoogleFonts.inter(
+                                                color: isUnlocked
+                                                    ? Colors.white
+                                                    : Colors.grey[600],
+                                                fontSize: 26,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            if (isUnlocked &&
+                                                index < scores.length)
+                                              Text(
+                                                '${scores[index]}%',
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (!isUnlocked)
+                                        const Positioned(
+                                          right: 0,
+                                          top: 0,
+                                          child: Icon(
+                                            Icons.lock,
+                                            color: Colors.grey,
+                                            size: 26,
+                                          ),
+                                        ),
+                                      if (isUnlocked && index < scores.length)
+                                        Positioned(
+                                          right: 0,
+                                          top: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: selected['color']
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              Icons.check_circle,
+                                              color: selected['color'],
+                                              size: 22,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ],
                               ),
                             ),
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isUnlocked
-                                    ? selected['color']
-                                    : Colors.grey.shade300,
-                                border: Border.all(
-                                  color: isUnlocked
-                                      ? selected['color'].withOpacity(0.8)
-                                      : Colors.grey.shade400,
-                                  width: 3,
-                                ),
-                              ),
-                              child: Center(
-                                child: isUnlocked
-                                    ? Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            '${progress.toInt()}%',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                            ),
-                                          ),
-                                          const Text(
-                                            'Done',
-                                            style: TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : const Icon(
-                                        Icons.lock,
-                                        color: Colors.black45,
-                                        size: 28,
-                                      ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: -25,
-                              child: Text(
-                                'LEVEL ${index + 1}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: isUnlocked
-                                      ? Colors.black87
-                                      : Colors.black38,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // dropdown menu overlay
+            if (_isDropdownOpen)
+              Positioned(
+                top: 55,
+                left: 16,
+                right: 16,
+                child: Material(
+                  elevation: 8,
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Column(
+                    children: List.generate(_sections.length, (index) {
+                      final s = _sections[index];
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index == _sections.length - 1 ? 0 : 8.0,
                         ),
-                      ),
-                    );
-                  }),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedSectionIndex = index;
+                              _isDropdownOpen = false;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(18),
+                          child: Container(
+                            width: screenWidth - 32,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 18,
+                              horizontal: 20,
+                            ),
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 0,
+                              vertical: 0,
+                            ),
+                            decoration: BoxDecoration(
+                              color: s['color'],
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: s['color'].withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s['section'],
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  s['title'],
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
       bottomNavigationBar: BottomNavBar(currentIndex: _currentBottomNavIndex),
