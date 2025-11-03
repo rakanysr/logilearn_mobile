@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:logilearn/view/widgetAttempt/dropdown_button.dart' as dropdown_widget;
 import 'package:logilearn/view/widgetAttempt/header_section.dart';
 import 'package:logilearn/view/widgetAttempt/question_card.dart';
@@ -20,9 +21,13 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
+    return Theme(
+      data: Theme.of(context).copyWith(
+        textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SingleChildScrollView(
         child: Column(
           children: [
             dropdown_widget.SectionDropdownButton(
@@ -90,8 +95,8 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
             const SizedBox(height: 30),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavBar(
+        ),
+        bottomNavigationBar: BottomNavBar(
         currentIndex: _currentBottomNavIndex,
         onTap: (index) {
           setState(() {
@@ -106,6 +111,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
            
           }
         },
+        ),
       ),
     );
   }
