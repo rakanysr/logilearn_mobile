@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home_view.dart';
+import 'register_view.dart';
 
 class User {
   final String username;
@@ -243,7 +244,12 @@ class _LoginViewState extends State<LoginView> {
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: () {
-                          
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RegistrasiScreen(),
+                            )
+                          );
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFF2977FF)),
