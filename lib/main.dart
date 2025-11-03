@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'view/login_view.dart';
-import 'view/home_view.dart';
+
 void main() {
   runApp(const QuizApp());
 }
@@ -13,11 +13,8 @@ class QuizApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Quiz Logika',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: 'Poppins',
-      ),
-      home: const HomeView(),
+      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Poppins'),
+      home: const LoginView(),
     );
   }
 }
