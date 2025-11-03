@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:logilearn/widget/bottombar.dart';
+import 'package:logilearn/view/quiz_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -40,6 +41,14 @@ class _HomeViewState extends State<HomeView> {
       'levelScores': [],
     },
   ];
+
+  void _navigateToLevelDetail(int level) {
+    // Navigate to quiz screen for the selected level
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const QuizScreen()),
+    );
+  }
 
   void _showLockedPopup() {
     showDialog(
@@ -81,7 +90,10 @@ class _HomeViewState extends State<HomeView> {
                       ),
                     ),
                     onPressed: () => Navigator.pop(context),
-                    child: Text("Oke", style: GoogleFonts.inter()),
+                    child: Text(
+                      "Oke",
+                      style: GoogleFonts.inter(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -90,10 +102,6 @@ class _HomeViewState extends State<HomeView> {
         ),
       ),
     );
-  }
-
-  void _navigateToLevelDetail(int level) {
-    // ke halaman detail level
   }
 
   @override
