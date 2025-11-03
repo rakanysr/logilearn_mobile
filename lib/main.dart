@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'view/quiz_view.dart';
-
+import 'view/login_view.dart';
+import 'view/home_view.dart';
 void main() {
   runApp(const QuizApp());
 }
@@ -17,7 +17,7 @@ class QuizApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'Poppins',
       ),
-      home: const QuizScreen(),
+      home: const HomeView(),
     );
   }
 }
