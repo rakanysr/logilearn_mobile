@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'view/login_view.dart';
-
+import 'view/home_view.dart';
 void main() {
-  runApp(const MyApp());
+  runApp(const QuizApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class QuizApp extends StatelessWidget {
+  const QuizApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: const LoginView());
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Quiz Logika',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        fontFamily: 'Poppins',
+      ),
+      home: const HomeView(),
+    );
   }
 }
