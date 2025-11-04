@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'login_view.dart';
 
 class RegistrasiScreen extends StatefulWidget {
   const RegistrasiScreen({super.key});
@@ -29,7 +30,10 @@ class _RegistrasiScreenState extends State<RegistrasiScreen> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.of(context).pop();
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginView()),
+            );
           },
         ),
         title: Text(
@@ -123,6 +127,10 @@ class _RegistrasiScreenState extends State<RegistrasiScreen> {
             String password = _passwordController.text;
             debugPrint('Username: $username');
             debugPrint('Password: $password');
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginView()),
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Color(0xFF2977FF),

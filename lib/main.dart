@@ -13,7 +13,7 @@ class QuizApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Quiz Logika',
+      title: 'LogiLearn',
       theme: ThemeData(
         primarySwatch: Colors.blue, 
         textTheme: GoogleFonts.interTextTheme(),
