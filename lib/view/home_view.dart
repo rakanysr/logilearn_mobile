@@ -13,7 +13,7 @@ class HomeView extends StatefulWidget {
 class _HomeViewState extends State<HomeView> {
   bool _isDropdownOpen = false;
   int _selectedSectionIndex = 0;
-  int _currentBottomNavIndex = 0;
+  final int _currentBottomNavIndex = 0;
 
   final List<Map<String, dynamic>> _sections = [
     {
@@ -23,6 +23,7 @@ class _HomeViewState extends State<HomeView> {
       'image': 'assets/images/Mascot halo.png',
       'unlockedLevel': 4,
       'levelScores': [100, 85, 90, 0],
+      'totalLevels': 10,
     },
     {
       'section': 'SECTION 2',
@@ -31,6 +32,7 @@ class _HomeViewState extends State<HomeView> {
       'image': 'assets/images/Mascot banyak.png',
       'unlockedLevel': 0,
       'levelScores': [],
+      'totalLevels': 10,
     },
     {
       'section': 'SECTION 3',
@@ -39,11 +41,11 @@ class _HomeViewState extends State<HomeView> {
       'image': 'assets/images/Mascot buntung.png',
       'unlockedLevel': 0,
       'levelScores': [],
+      'totalLevels': 10,
     },
   ];
 
   void _navigateToLevelDetail(int level) {
-    // Navigate to quiz screen for the selected level
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const QuizScreen()),
@@ -108,7 +110,10 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     final selected = _sections[_selectedSectionIndex];
     final screenWidth = MediaQuery.of(context).size.width;
-
+    int unlocked = selected['unlockedLevel'];
+    int total = selected['totalLevels'];
+    double sectionProgress = unlocked / total; // Nilai 0.0 - 1.0
+    int percentageDisplay = (sectionProgress * 100).toInt();
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -131,7 +136,6 @@ class _HomeViewState extends State<HomeView> {
                     ),
                   ),
 
-                  // dropdown header
                   Container(
                     width: screenWidth,
                     margin: const EdgeInsets.symmetric(
@@ -202,6 +206,47 @@ class _HomeViewState extends State<HomeView> {
                   const SizedBox(height: 20),
                   Image.asset(selected['image'], height: 120),
                   const SizedBox(height: 12),
+
+                  // Progress Section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Progress Belajar',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '$percentageDisplay%',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: selected['color'],
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: sectionProgress,
+                            minHeight: 10,
+                            backgroundColor: Colors.grey[200],
+                            color: selected['color'],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   Text(
                     '${selected['section']}',
                     style: GoogleFonts.inter(
@@ -217,12 +262,10 @@ class _HomeViewState extends State<HomeView> {
                       color: Colors.black87,
                     ),
                   ),
-
-                  // grid zigzag
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20.0),
                     child: Column(
-                      children: List.generate(10, (index) {
+                      children: List.generate(selected['totalLevels'], (index) {
                         final isUnlocked = index < selected['unlockedLevel'];
                         final scores = selected['levelScores'] as List<dynamic>;
                         final dx = (index % 4 == 0)
@@ -347,7 +390,6 @@ class _HomeViewState extends State<HomeView> {
               ),
             ),
 
-            // dropdown menu overlay
             if (_isDropdownOpen)
               Positioned(
                 top: 55,

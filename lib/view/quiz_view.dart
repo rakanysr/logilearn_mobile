@@ -3,10 +3,9 @@ import '../widgetSoal/question_card.dart';
 import '../widgetSoal/essay_field.dart';
 import '../widgetSoal/finish_screen.dart';
 
-// MODEL SOAL
 class Question {
   final String question;
-  final List<String>? options; // null jika soal isian
+  final List<String>? options;
   final int? correctIndex;
   final bool isEssay;
 
@@ -18,7 +17,6 @@ class Question {
   });
 }
 
-// DATA SOAL 
 final List<Question> questions = [
   Question(
     question: "Berapakah itu 2 + 2 = ....",
@@ -48,8 +46,19 @@ class _QuizScreenState extends State<QuizScreen> {
   int currentIndex = 0;
   int? selectedIndex;
   String essayAnswer = "";
+  int score = 0;
 
   void nextQuestion() {
+    final currentQ = questions[currentIndex];
+    if (currentQ.isEssay) {
+      if (essayAnswer.trim().isNotEmpty) {
+        score++;
+      }
+    } else {
+      if (selectedIndex == currentQ.correctIndex) {
+        score++;
+      }
+    }
     if (currentIndex < questions.length - 1) {
       setState(() {
         currentIndex++;
@@ -59,7 +68,10 @@ class _QuizScreenState extends State<QuizScreen> {
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const FinishScreen()),
+        MaterialPageRoute(
+          builder: (_) =>
+              FinishScreen(score: score, totalQuestions: questions.length),
+        ),
       );
     }
   }
@@ -76,7 +88,6 @@ class _QuizScreenState extends State<QuizScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Header Progress
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -96,16 +107,12 @@ class _QuizScreenState extends State<QuizScreen> {
                 ],
               ),
               const SizedBox(height: 30),
-
-              // Pertanyaan
               QuestionCard(
                 question: question.question,
                 imagePath: 'assets/images/Mascot bertangan.png',
               ),
 
               const SizedBox(height: 20),
-
-              // Pilihan ganda atau essay
               if (!question.isEssay)
                 Column(
                   children: List.generate(
@@ -143,13 +150,9 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                 )
               else
-                EssayField(
-                  onChanged: (val) => essayAnswer = val,
-                ),
+                EssayField(onChanged: (val) => essayAnswer = val),
 
               const Spacer(),
-
-              // Tombol Next
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -166,10 +169,11 @@ class _QuizScreenState extends State<QuizScreen> {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 ),
-              )
+              ),
             ],
           ),
         ),
