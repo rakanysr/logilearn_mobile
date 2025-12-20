@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiService {
-  // Use 10.0.2.2 for Android Emulator, localhost for others (Web/iOS Simulator)
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:3030/api';
     if (Platform.isAndroid) return 'http://10.0.2.2:3030/api';
@@ -41,6 +40,7 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+
   Future<Map<String, dynamic>> getProfile() async {
     final url = Uri.parse('$baseUrl/profile');
     try {
@@ -121,6 +121,22 @@ class ApiService {
     } catch (e) {
       print('getSoalsByLevel - Exception: $e');
       return {'success': false, 'message': e.toString()};
+
+  Future<Map<String, dynamic>> changePassword(
+    String oldPw,
+    String newPw,
+  ) async {
+    final url = Uri.parse('$baseUrl/profile/change-password');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode({'oldPassword': oldPw, 'newPassword': newPw}),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'status': 500, 'message': e.toString()};
     }
   }
 }

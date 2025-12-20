@@ -1,18 +1,74 @@
 import 'package:flutter/material.dart';
-import 'package:logilearn/view/widgetAccount/Change_Password_View.dart';
-import 'package:logilearn/widget/bottombar.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:logilearn/services/api_service.dart';
+import 'package:logilearn/services/auth_service.dart';
+import 'package:logilearn/view/widgetAccount/change_password_view.dart';
 import 'package:logilearn/view/widgetAccount/profile_view.dart';
 import 'package:logilearn/view/login_view.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:logilearn/widget/bottombar.dart';
 
-class AccountView extends StatelessWidget {
+class AccountView extends StatefulWidget {
   const AccountView({super.key});
 
   @override
+  State<AccountView> createState() => _AccountViewState();
+}
+
+class _AccountViewState extends State<AccountView> {
+  final ApiService _apiService = ApiService();
+  final AuthService _authService = AuthService();
+
+  Map<String, dynamic>? profileData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfileData();
+  }
+
+  Future<void> _fetchProfileData() async {
+    try {
+      final response = await _apiService.getProfile();
+
+      if (response['status_code'] == 200) {
+        setState(() {
+          profileData = response['data']['payload']['datas'];
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+        String errorMsg = response['data']?['message'] ?? "Gagal memuat profil";
+        _showSnackBar(errorMsg, Colors.red);
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      _showSnackBar("Terjadi kesalahan koneksi", Colors.red);
+    }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF2977FF)),
+        ),
+      );
+    }
+
+    final stats =
+        profileData?['statistik'] ?? {'section_selesai': 0, 'level_selesai': 0};
+
     return Scaffold(
       backgroundColor: Colors.white,
-
       body: Column(
         children: [
           Container(
@@ -20,20 +76,19 @@ class AccountView extends StatelessWidget {
             height: 180,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color.fromARGB(255, 187, 241, 253), Color(0xFF2977FF)],
+                colors: [Color(0xFFBBF1FD), Color(0xFF2977FF)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
             ),
             padding: const EdgeInsets.only(left: 20, right: 20, top: 50),
             alignment: Alignment.centerLeft,
-            child: const Text(
+            child: Text(
               'Akun Saya',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 20,
               ),
             ),
           ),
@@ -45,11 +100,7 @@ class AccountView extends StatelessWidget {
                   Transform.translate(
                     offset: const Offset(0, -30),
                     child: Container(
-                      height: 160,
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -65,153 +116,127 @@ class AccountView extends StatelessWidget {
                       child: Row(
                         children: [
                           const CircleAvatar(
-                            radius: 28,
+                            radius: 30,
                             backgroundImage: AssetImage(
                               'assets/images/Mascot buntung.png',
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          const Expanded(
+                          const SizedBox(width: 15),
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                SizedBox(height: 40),
                                 Text(
-                                  'Jakarta Jawa',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontWeight: FontWeight.w600,
+                                  profileData?['nama'] ?? "Nama Pelajar",
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
                                 ),
-                                SizedBox(height: 5),
+                                const SizedBox(height: 4),
                                 Text(
-                                  '@JawaJawa',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
+                                  profileData?['username'] != null
+                                      ? "@${profileData!['username']}"
+                                      : "@username",
+                                  style: GoogleFonts.inter(
                                     fontSize: 13,
-                                    color: Colors.grey,
+                                    color: Colors.grey[600],
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ProfileView(),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(color: Color(0xFF2977FF)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                            ),
-                            icon: const Icon(
-                              Icons.person,
-                              color: Color(0xFF2977FF),
-                              size: 18,
-                            ),
-                            label: const Text(
-                              'Lihat Profil',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                color: Color(0xFF2977FF),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
+                          _buildLihatProfilButton(),
                         ],
                       ),
                     ),
                   ),
 
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
-                        Expanded(child: _buildStatCard('Section Selesai', '0')),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Section Selesai',
+                            stats['section_selesai']?.toString() ?? "0",
+                          ),
+                        ),
                         const SizedBox(width: 12),
-                        Expanded(child: _buildStatCard('Level Selesai', '3')),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Level Selesai',
+                            stats['level_selesai']?.toString() ?? "0",
+                          ),
+                        ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 10),
-
+                  const SizedBox(height: 20),
                   _buildMenuItem(
                     icon: Icons.lock_outline,
-                    text: 'Ganti Sandi',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ChangePasswordView(),
-                        ),
-                      );
-                    },
+                    text: 'Ganti Kata Sandi',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ChangePasswordView(),
+                      ),
+                    ),
                   ),
-
                   _buildMenuItem(
                     icon: Icons.logout,
                     text: 'Keluar',
                     onTap: () => _showLogoutDialog(context),
                   ),
-
-                  const SizedBox(height: 40),
                 ],
               ),
             ),
           ),
         ],
       ),
-
       bottomNavigationBar: const BottomNavBar(currentIndex: 2),
+    );
+  }
+
+  Widget _buildLihatProfilButton() {
+    return OutlinedButton(
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ProfileView(userData: profileData)),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF2977FF),
+        side: const BorderSide(color: Color(0xFF2977FF)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: const Text(
+        'Lihat Profil',
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+      ),
     );
   }
 
   Widget _buildStatCard(String title, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
         ],
       ),
       child: Column(
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 13,
-              color: Colors.grey,
-            ),
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-            ),
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
           ),
         ],
       ),
@@ -223,132 +248,43 @@ class AccountView extends StatelessWidget {
     required String text,
     required VoidCallback onTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: Colors.grey[700]),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  text,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
-        ),
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: Colors.grey[700]),
+      title: Text(
+        text,
+        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w500),
       ),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
     );
   }
 
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      builder: (context) => AlertDialog(
+        title: const Text('Keluar'),
+        content: const Text('Apakah Anda yakin ingin keluar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('BATAL'),
           ),
-          title: Center(
-            child: Text(
-              'Keluar',
-              style: GoogleFonts.getFont(
-                'Inter',
-                fontWeight: FontWeight.w700,
-                color: Colors.black,
-              ),
-            ),
+          TextButton(
+            onPressed: () async {
+              await _authService.logout();
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginView()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('YA', style: TextStyle(color: Colors.red)),
           ),
-          content: Text(
-            'Apakah anda yakin untuk keluar dari akun anda?',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.getFont(
-              'Inter',
-              fontSize: 14,
-              color: Colors.black87,
-            ),
-          ),
-          actionsAlignment: MainAxisAlignment.center,
-          actions: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFA8A8),
-                    minimumSize: const Size(100, 40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'TIDAK',
-                    style: GoogleFonts.getFont(
-                      'Inter',
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2977FF),
-                    minimumSize: const Size(100, 40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoginView(),
-                      ),
-                      (Route<dynamic> route) => false,
-                    );
-                  },
-                  child: Text(
-                    'YA',
-                    style: GoogleFonts.getFont(
-                      'Inter',
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 }
