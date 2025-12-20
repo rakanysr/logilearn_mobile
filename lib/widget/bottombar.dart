@@ -20,9 +20,19 @@ class BottomNavBar extends StatelessWidget {
         );
         break;
       case 1:
+        // Navigate to ReviewAttemptView with default values
+        // In a real scenario, you might want to show a list of attempts instead
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const ReviewAttemptView()),
+          MaterialPageRoute(
+            builder: (context) => const ReviewAttemptView(
+              sectionSlug: 'section-1',
+              levelId: 1,
+              sectionTitle: 'LOGIKA DASAR',
+              sectionNumber: 1,
+              levelNumber: 1,
+            ),
+          ),
         );
         break;
       case 2:

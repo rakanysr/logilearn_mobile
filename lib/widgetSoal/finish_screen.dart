@@ -5,10 +5,21 @@ import '../view/quiz_view.dart';
 class FinishScreen extends StatelessWidget {
   final int score;
   final int totalQuestions;
+  final String? sectionSlug;
+  final int? levelId;
+  final String? sectionTitle;
+  final int? sectionNumber;
+  final int? levelNumber;
+  
   const FinishScreen({
     super.key,
     required this.score,
     required this.totalQuestions,
+    this.sectionSlug,
+    this.levelId,
+    this.sectionTitle,
+    this.sectionNumber,
+    this.levelNumber,
   });
 
   @override
@@ -98,10 +109,26 @@ class FinishScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const QuizScreen()),
-                    );
+                    // If we have quiz parameters, restart the quiz
+                    if (sectionSlug != null && levelId != null && 
+                        sectionTitle != null && sectionNumber != null && 
+                        levelNumber != null) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => QuizScreen(
+                            sectionSlug: sectionSlug!,
+                            levelId: levelId!,
+                            sectionTitle: sectionTitle!,
+                            sectionNumber: sectionNumber!,
+                            levelNumber: levelNumber!,
+                          ),
+                        ),
+                      );
+                    } else {
+                      // Otherwise, go back to previous screen
+                      Navigator.pop(context);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
