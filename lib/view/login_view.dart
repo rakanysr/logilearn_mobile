@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'home_view.dart';
 import 'register_view.dart';
-
-class User {
-  final String username;
-  final String password;
-
-  User({required this.username, required this.password});
-}
+import '../services/auth_service.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -17,40 +12,44 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
-  //data user
-  final List<User> listUser = [
-    User(username: "admin", password: "123")
-  ];
+  
 
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   
   bool _isPasswordVisible = false;
 
-  //cek login
-  bool _login(String username, String password){
-    for(var user in listUser){
-      if(user.username == username && user.password == password){
-        return true;
-      }
-    }
-    return false;
-  }
+  final AuthService _authService = AuthService();
+  final _storage = const FlutterSecureStorage();
 
-  void _handleLogin(){
+  void _handleLogin() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if(_login(username, password)){
+    if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Berhasil login!"),
+          content: Text("Username dan password wajib diisi"),
+          backgroundColor: Colors.red,
+        )
+      );
+      return;
+    }
+
+    final success = await _authService.loginPelajar(username, password);
+
+    if (success) {
+      final nama = await _storage.read(key: "nama_pelajar");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Login berhasil, selamat datang ${nama}"),
           backgroundColor: Color(0xFF2977FF),
         )
       );
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) =>  const HomeView(),)
+        MaterialPageRoute(builder: (_) => const HomeView())
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,6 +59,7 @@ class _LoginViewState extends State<LoginView> {
         )
       );
     }
+
   }
 
   @override
