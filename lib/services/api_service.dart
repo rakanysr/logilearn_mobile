@@ -121,6 +121,8 @@ class ApiService {
     } catch (e) {
       print('getSoalsByLevel - Exception: $e');
       return {'success': false, 'message': e.toString()};
+    }
+  }
 
   Future<Map<String, dynamic>> changePassword(
     String oldPw,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgetSoal/question_card.dart';
+import '../widgetSoal/question_card.dart' as quiz_widget;
 import '../widgetSoal/finish_screen.dart';
 import '../services/api_service.dart';
 
@@ -356,7 +356,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 ],
               ),
               const SizedBox(height: 30),
-              QuestionCard(
+              quiz_widget.QuestionCard(
                 question: question.question,
                 imagePath: 'assets/images/Mascot bertangan.png',
               ),
