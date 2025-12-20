@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:logilearn/services/api_service.dart';
-import 'package:logilearn/view/widgetAttempt/dropdown_button.dart' as dropdown_widget;
+import 'package:logilearn/view/widgetAttempt/dropdown_button.dart'
+    as dropdown_widget;
 import 'package:logilearn/view/widgetAttempt/header_section.dart';
 import 'package:logilearn/view/widgetAttempt/question_card.dart';
 import 'package:logilearn/view/widgetAttempt/question_card_with_feedback.dart';
@@ -34,12 +35,13 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
   int _currentBottomNavIndex = 1;
   bool _isLoading = true;
   List<Map<String, dynamic>> _soals = [];
-  String? _errorMessage; 
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _selectedSection = 'Section ${widget.sectionNumber}, Level ${widget.levelNumber}';
+    _selectedSection =
+        'Section ${widget.sectionNumber}, Level ${widget.levelNumber}';
     _selectedTitle = widget.sectionTitle;
     _loadLevelData();
   }
@@ -55,10 +57,15 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       print('=== Loading soals data ===');
       print('  sectionSlug: ${widget.sectionSlug}');
       print('  levelId: ${widget.levelId}');
-      print('  Full URL will be: ${ApiService.baseUrl}/${widget.sectionSlug}/levels/${widget.levelId}/soal');
-      
+      print(
+        '  Full URL will be: ${ApiService.baseUrl}/${widget.sectionSlug}/levels/${widget.levelId}/soal',
+      );
+
       // Use new endpoint to get soals directly
-      final result = await apiService.getSoalsByLevel(widget.sectionSlug, widget.levelId);
+      final result = await apiService.getSoalsByLevel(
+        widget.sectionSlug,
+        widget.levelId,
+      );
 
       print('API Response success: ${result['success']}');
       print('API Response data keys: ${result['data']?.keys}');
@@ -69,13 +76,14 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
 
         // Parse response structure from helpers/response.js
         // Structure: { payload: { datas: [...] } }
-        if (fullResponse is Map &&
-            fullResponse['payload'] is Map) {
+        if (fullResponse is Map && fullResponse['payload'] is Map) {
           final payload = fullResponse['payload'] as Map;
-          
+
           if (payload['datas'] is List) {
             soalsList = payload['datas'] as List;
-            print('Parsed soals from payload.datas (array): ${soalsList.length}');
+            print(
+              'Parsed soals from payload.datas (array): ${soalsList.length}',
+            );
           } else if (payload['datas'] is Map) {
             // If single object, wrap in array
             soalsList = [payload['datas']];
@@ -90,14 +98,16 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
         }
 
         print('Found ${soalsList.length} soals');
-        
+
         if (soalsList.isNotEmpty) {
           setState(() {
             _soals = soalsList.map<Map<String, dynamic>>((soal) {
-              final soalMap = soal is Map<String, dynamic> 
-                  ? soal 
-                  : (soal is Map ? Map<String, dynamic>.from(soal) : <String, dynamic>{});
-              
+              final soalMap = soal is Map<String, dynamic>
+                  ? soal
+                  : (soal is Map
+                        ? Map<String, dynamic>.from(soal)
+                        : <String, dynamic>{});
+
               // Parse opsis with correct field names from backend
               // Backend uses: text_opsi, is_correct
               List<dynamic> opsisList = [];
@@ -105,27 +115,46 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                 opsisList = (soalMap['opsis'] as List).map((opsi) {
                   final opsiMap = opsi is Map<String, dynamic>
                       ? opsi
-                      : (opsi is Map ? Map<String, dynamic>.from(opsi) : <String, dynamic>{});
+                      : (opsi is Map
+                            ? Map<String, dynamic>.from(opsi)
+                            : <String, dynamic>{});
                   // Map backend field names to our internal format
                   return {
                     'id': opsiMap['id'],
-                    'text': opsiMap['text_opsi'] ?? opsiMap['text'] ?? '', // Backend uses text_opsi
-                    'text_opsi': opsiMap['text_opsi'] ?? opsiMap['text'] ?? '', // Keep original for compatibility
-                    'is_benar': opsiMap['is_correct'] ?? opsiMap['is_benar'] ?? false, // Backend uses is_correct
-                    'is_correct': opsiMap['is_correct'] ?? opsiMap['is_benar'] ?? false, // Keep original for compatibility
+                    'text':
+                        opsiMap['text_opsi'] ??
+                        opsiMap['text'] ??
+                        '', // Backend uses text_opsi
+                    'text_opsi':
+                        opsiMap['text_opsi'] ??
+                        opsiMap['text'] ??
+                        '', // Keep original for compatibility
+                    'is_benar':
+                        opsiMap['is_correct'] ??
+                        opsiMap['is_benar'] ??
+                        false, // Backend uses is_correct
+                    'is_correct':
+                        opsiMap['is_correct'] ??
+                        opsiMap['is_benar'] ??
+                        false, // Keep original for compatibility
                   };
                 }).toList();
-                print('Parsed ${opsisList.length} opsis for soal ${soalMap['id']}');
+                print(
+                  'Parsed ${opsisList.length} opsis for soal ${soalMap['id']}',
+                );
               } else {
-                print('No opsis found or opsis is not a List for soal ${soalMap['id']}');
+                print(
+                  'No opsis found or opsis is not a List for soal ${soalMap['id']}',
+                );
               }
-              
+
               return {
                 'id': soalMap['id'],
                 'text_soal': soalMap['text_soal'] ?? '',
                 'tipe': soalMap['tipe'] ?? 'pg',
                 'opsis': opsisList,
-                'kata_kunci': soalMap['kata_kunci'] ?? '', // For essay questions
+                'kata_kunci':
+                    soalMap['kata_kunci'] ?? '', // For essay questions
               };
             }).toList();
             _isLoading = false;
@@ -173,11 +202,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red[300],
-                  ),
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
                   const SizedBox(height: 16),
                   Text(
                     'Oops! Terjadi Kesalahan',
@@ -228,135 +253,145 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SingleChildScrollView(
-        child: Column(
-          children: [
-            dropdown_widget.SectionDropdownButton(
-              selectedSection: _selectedSection,
-              selectedTitle: _selectedTitle,
-              isDropdownOpen: _isDropdownOpen,
-              onToggleDropdown: () {
-                setState(() {
-                  _isDropdownOpen = !_isDropdownOpen;
-                });
-              },
-              onSelectSection: (section, title, number) {
-                setState(() {
-                  _selectedSection = section;
-                  _selectedTitle = title;
-                  _isDropdownOpen = false;
-                });
-              },
-            ),
-            
-            const SizedBox(height: 24),
-      
-            HeaderSection(
-              selectedSection: _selectedSection,
-              selectedTitle: _selectedTitle,
-              onNextSection: _nextSection,
-            ),
-            
-            const SizedBox(height: 32),
-            
-            // Display questions from backend
-            if (_soals.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: _soals.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final soal = entry.value;
-                    final questionNumber = index + 1;
-                    final tipe = soal['tipe'] as String? ?? 'pg';
-                    final textSoal = soal['text_soal'] as String? ?? '';
-                    final opsis = soal['opsis'] as List? ?? [];
+          child: Column(
+            children: [
+              dropdown_widget.SectionDropdownButton(
+                selectedSection: _selectedSection,
+                selectedTitle: _selectedTitle,
+                isDropdownOpen: _isDropdownOpen,
+                onToggleDropdown: () {
+                  setState(() {
+                    _isDropdownOpen = !_isDropdownOpen;
+                  });
+                },
+                onSelectSection: (section, title, number) {
+                  setState(() {
+                    _selectedSection = section;
+                    _selectedTitle = title;
+                    _isDropdownOpen = false;
+                  });
+                },
+              ),
 
-                    // For now, we'll show placeholder data since we don't have attempt data
-                    // In a real scenario, you would fetch attempt data separately
-                    if (tipe == 'esai') {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: QuestionCardWithFeedback(
-                          questionNumber: questionNumber,
-                          score: '0/1', // Placeholder - should come from attempt data
-                          isCorrect: false, // Placeholder - should come from attempt data
-                          question: textSoal,
-                          answer: 'Jawaban belum tersedia', // Placeholder - should come from attempt data
-                          feedback: 'Feedback belum tersedia', // Placeholder - should come from attempt data
-                        ),
-                      );
-                    } else {
-                      // Find the correct option text
-                      // Support both is_benar and is_correct, and both text and text_opsi
-                      String correctAnswerText = 'Jawaban belum tersedia';
-                      if (opsis.isNotEmpty) {
-                        try {
-                          final correctOption = opsis.firstWhere(
-                            (opsi) => (opsi['is_benar'] == true) || (opsi['is_correct'] == true),
-                          );
-                          if (correctOption != null) {
-                            correctAnswerText = (correctOption['text'] ?? 
-                                                correctOption['text_opsi'] ?? 
-                                                'Jawaban belum tersedia').toString();
-                          }
-                        } catch (e) {
-                          // If no correct option found, try to find manually
-                          for (var opsi in opsis) {
-                            if ((opsi['is_benar'] == true) || (opsi['is_correct'] == true)) {
-                              correctAnswerText = (opsi['text'] ?? 
-                                                  opsi['text_opsi'] ?? 
-                                                  'Jawaban belum tersedia').toString();
-                              break;
+              const SizedBox(height: 24),
+
+              HeaderSection(
+                selectedSection: _selectedSection,
+                selectedTitle: _selectedTitle,
+                onNextSection: _nextSection,
+              ),
+
+              const SizedBox(height: 32),
+
+              // Display questions from backend
+              if (_soals.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: _soals.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final soal = entry.value;
+                      final questionNumber = index + 1;
+                      final tipe = soal['tipe'] as String? ?? 'pg';
+                      final textSoal = soal['text_soal'] as String? ?? '';
+                      final opsis = soal['opsis'] as List? ?? [];
+
+                      // For now, we'll show placeholder data since we don't have attempt data
+                      // In a real scenario, you would fetch attempt data separately
+                      if (tipe == 'esai') {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: QuestionCardWithFeedback(
+                            questionNumber: questionNumber,
+                            score:
+                                '0/1', // Placeholder - should come from attempt data
+                            isCorrect:
+                                false, // Placeholder - should come from attempt data
+                            question: textSoal,
+                            answer:
+                                'Jawaban belum tersedia', // Placeholder - should come from attempt data
+                            feedback:
+                                'Feedback belum tersedia', // Placeholder - should come from attempt data
+                          ),
+                        );
+                      } else {
+                        // Find the correct option text
+                        // Support both is_benar and is_correct, and both text and text_opsi
+                        String correctAnswerText = 'Jawaban belum tersedia';
+                        if (opsis.isNotEmpty) {
+                          try {
+                            final correctOption = opsis.firstWhere(
+                              (opsi) =>
+                                  (opsi['is_benar'] == true) ||
+                                  (opsi['is_correct'] == true),
+                            );
+                            if (correctOption != null) {
+                              correctAnswerText =
+                                  (correctOption['text'] ??
+                                          correctOption['text_opsi'] ??
+                                          'Jawaban belum tersedia')
+                                      .toString();
+                            }
+                          } catch (e) {
+                            // If no correct option found, try to find manually
+                            for (var opsi in opsis) {
+                              if ((opsi['is_benar'] == true) ||
+                                  (opsi['is_correct'] == true)) {
+                                correctAnswerText =
+                                    (opsi['text'] ??
+                                            opsi['text_opsi'] ??
+                                            'Jawaban belum tersedia')
+                                        .toString();
+                                break;
+                              }
                             }
                           }
                         }
-                      }
-                      if (correctAnswerText.isEmpty) {
-                        correctAnswerText = 'Jawaban belum tersedia';
-                      }
+                        if (correctAnswerText.isEmpty) {
+                          correctAnswerText = 'Jawaban belum tersedia';
+                        }
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: QuestionCard(
-                          questionNumber: questionNumber,
-                          score: '0/1', // Placeholder - should come from attempt data
-                          isCorrect: false, // Placeholder - should come from attempt data
-                          question: textSoal,
-                          answer: correctAnswerText, // Placeholder - should come from attempt data
-                        ),
-                      );
-                    }
-                  }).toList(),
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: QuestionCard(
+                            questionNumber: questionNumber,
+                            score:
+                                '0/1', // Placeholder - should come from attempt data
+                            isCorrect:
+                                false, // Placeholder - should come from attempt data
+                            question: textSoal,
+                            answer:
+                                correctAnswerText, // Placeholder - should come from attempt data
+                          ),
+                        );
+                      }
+                    }).toList(),
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Tidak ada soal ditemukan untuk level ini',
+                    style: GoogleFonts.inter(color: Colors.grey),
+                  ),
                 ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Tidak ada soal ditemukan untuk level ini',
-                  style: GoogleFonts.inter(color: Colors.grey),
-                ),
-              ),
-            
-            const SizedBox(height: 30),
-          ],
-        ),
+
+              const SizedBox(height: 30),
+            ],
+          ),
         ),
         bottomNavigationBar: BottomNavBar(
-        currentIndex: _currentBottomNavIndex,
-        onTap: (index) {
-          setState(() {
-            _currentBottomNavIndex = index;
-          });
-          // Handle navigation based on index
-          if (index == 0) {
-     
-          } else if (index == 1) {
-        
-          } else if (index == 2) {
-           
-          }
-        },
+          currentIndex: _currentBottomNavIndex,
+          onTap: (index) {
+            setState(() {
+              _currentBottomNavIndex = index;
+            });
+            // Handle navigation based on index
+            if (index == 0) {
+            } else if (index == 1) {
+            } else if (index == 2) {}
+          },
         ),
       ),
     );

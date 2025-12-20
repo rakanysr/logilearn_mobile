@@ -4,14 +4,18 @@ import '../widgetSoal/finish_screen.dart';
 import '../services/api_service.dart';
 
 class Question {
+  final int id;
   final String question;
   final List<String>? options;
+  final List<int>? optionIds;
   final int? correctIndex;
   final bool isEssay;
 
   Question({
+    required this.id,
     required this.question,
     this.options,
+    this.optionIds,
     this.correctIndex,
     this.isEssay = false,
   });
@@ -45,17 +49,21 @@ class _QuizScreenState extends State<QuizScreen> {
   List<Question> questions = [];
   bool _isLoading = true;
   String? _errorMessage;
-  Map<int, int> _userAnswers = {}; // Store user's selected answers for PG questions
+  Map<int, int> _userAnswers =
+      {}; // Store user's selected answers for PG questions (index)
   Map<int, String> _userEssayAnswers = {}; // Store user's essay answers
   TextEditingController? _essayController;
+  int? _currentAttemptId; // Store attempt ID for submitting answers
 
   @override
   void initState() {
     super.initState();
-    _loadQuestions();
+    _initQuiz();
   }
 
-  Future<void> _loadQuestions() async {
+  Future<void> _initQuiz() async {
+    print('🚀 _initQuiz STARTED for level ${widget.levelId}');
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -63,9 +71,60 @@ class _QuizScreenState extends State<QuizScreen> {
 
     try {
       final apiService = ApiService();
-      print('Loading questions for level ${widget.levelId} in section ${widget.sectionSlug}');
-      
-      final result = await apiService.getSoalsByLevel(widget.sectionSlug, widget.levelId);
+
+      // 1. Create Attempt
+      print('📝 Creating attempt for level ${widget.levelId}');
+      final attemptRes = await apiService.createAttempt(widget.levelId);
+
+      print('📥 Attempt response received: $attemptRes');
+
+      if (!attemptRes['success']) {
+        print('❌ Attempt creation failed: ${attemptRes['message']}');
+        throw Exception(attemptRes['message']);
+      }
+
+      // Parse attempt ID from backend response
+      final attemptData = attemptRes['data'];
+      print('DEBUG: Full attempt response: $attemptData');
+
+      if (attemptData is Map) {
+        // Try to get from payload.datas.id (standard backend response)
+        if (attemptData['payload'] is Map &&
+            attemptData['payload']['datas'] is Map &&
+            attemptData['payload']['datas']['id'] != null) {
+          _currentAttemptId = attemptData['payload']['datas']['id'];
+          print(
+            'DEBUG: Got attempt ID from payload.datas.id: $_currentAttemptId',
+          );
+        }
+        // Fallback: try direct id
+        else if (attemptData['id'] != null) {
+          _currentAttemptId = attemptData['id'];
+          print('DEBUG: Got attempt ID from direct id: $_currentAttemptId');
+        }
+        // Fallback: try data.id
+        else if (attemptData['data'] is Map &&
+            attemptData['data']['id'] != null) {
+          _currentAttemptId = attemptData['data']['id'];
+          print('DEBUG: Got attempt ID from data.id: $_currentAttemptId');
+        }
+      }
+
+      if (_currentAttemptId == null) {
+        print('ERROR: Could not parse attempt ID. Response: $attemptData');
+        throw Exception('Failed to get attempt ID from response');
+      }
+      print('✓ Attempt created successfully with ID: $_currentAttemptId');
+
+      // 2. Load Questions
+      print(
+        'Loading questions for level ${widget.levelId} in section ${widget.sectionSlug}',
+      );
+
+      final result = await apiService.getSoalsByLevel(
+        widget.sectionSlug,
+        widget.levelId,
+      );
 
       if (result['success']) {
         final fullResponse = result['data'];
@@ -87,47 +146,57 @@ class _QuizScreenState extends State<QuizScreen> {
 
         if (soalsList.isNotEmpty) {
           final parsedQuestions = soalsList.map<Question>((soal) {
-            final soalMap = soal is Map<String, dynamic> 
-                ? soal 
-                : (soal is Map ? Map<String, dynamic>.from(soal) : <String, dynamic>{});
-            
+            final soalMap = soal is Map<String, dynamic>
+                ? soal
+                : (soal is Map
+                      ? Map<String, dynamic>.from(soal)
+                      : <String, dynamic>{});
+
+            final id = soalMap['id']; // Capture ID
             final tipe = soalMap['tipe'] as String? ?? 'pg';
             final textSoal = soalMap['text_soal'] as String? ?? '';
             final isEssay = tipe == 'esai';
-            
+
             if (isEssay) {
-              return Question(
-                question: textSoal,
-                isEssay: true,
-              );
+              return Question(id: id, question: textSoal, isEssay: true);
             } else {
               // Parse options for PG questions
               List<dynamic> opsisList = [];
               if (soalMap['opsis'] is List) {
                 opsisList = soalMap['opsis'] as List;
               }
-              
+
               List<String> options = [];
+              List<int> optionIds = [];
               int? correctIndex;
-              
+
               for (int i = 0; i < opsisList.length; i++) {
                 final opsi = opsisList[i];
                 final opsiMap = opsi is Map<String, dynamic>
                     ? opsi
-                    : (opsi is Map ? Map<String, dynamic>.from(opsi) : <String, dynamic>{});
-                
-                final text = (opsiMap['text_opsi'] ?? opsiMap['text'] ?? '').toString();
+                    : (opsi is Map
+                          ? Map<String, dynamic>.from(opsi)
+                          : <String, dynamic>{});
+
+                final text = (opsiMap['text_opsi'] ?? opsiMap['text'] ?? '')
+                    .toString();
+                final optId = opsiMap['id'];
+
                 options.add(text);
-                
+                optionIds.add(optId);
+
                 // Check if this is the correct answer
-                if ((opsiMap['is_correct'] == true) || (opsiMap['is_benar'] == true)) {
+                if ((opsiMap['is_correct'] == true) ||
+                    (opsiMap['is_benar'] == true)) {
                   correctIndex = i;
                 }
               }
-              
+
               return Question(
+                id: id,
                 question: textSoal,
                 options: options,
+                optionIds: optionIds,
                 correctIndex: correctIndex,
                 isEssay: false,
               );
@@ -156,28 +225,82 @@ class _QuizScreenState extends State<QuizScreen> {
         _errorMessage = 'Error: ${e.toString()}';
         _isLoading = false;
       });
-      print('Exception in _loadQuestions: $e');
+      print('Exception in _initQuiz: $e');
     }
   }
 
-  void nextQuestion() {
-    if (questions.isEmpty) return;
-    
+  Future<void> _submitCurrentAnswer() async {
+    if (_currentAttemptId == null) {
+      print('ERROR: Cannot submit answer - _currentAttemptId is null');
+      return;
+    }
+
     final currentQ = questions[currentIndex];
-    
-    // Save user's answer
+    final apiService = ApiService();
+
+    try {
+      if (currentQ.isEssay) {
+        final answer = essayAnswer;
+        if (answer.isNotEmpty) {
+          print('Submitting essay answer for question ${currentQ.id}...');
+          final result = await apiService.submitJawabanEsai(
+            _currentAttemptId!,
+            currentQ.id,
+            answer,
+          );
+          print('Essay submission result: $result');
+          if (!result['success']) {
+            print('ERROR: Essay submission failed: ${result['message']}');
+          }
+        } else {
+          print('Skipping empty essay answer');
+        }
+      } else {
+        // PG
+        if (selectedIndex != null && currentQ.optionIds != null) {
+          final optId = currentQ.optionIds![selectedIndex!];
+          print(
+            'Submitting PG answer for question ${currentQ.id}, option $optId...',
+          );
+          final result = await apiService.submitJawabanPG(
+            _currentAttemptId!,
+            optId,
+          );
+          print('PG submission result: $result');
+          if (!result['success']) {
+            print('ERROR: PG submission failed: ${result['message']}');
+          }
+        } else {
+          print('Skipping PG answer - no option selected or optionIds missing');
+        }
+      }
+    } catch (e) {
+      print('EXCEPTION in _submitCurrentAnswer: $e');
+    }
+  }
+
+  Future<void> nextQuestion() async {
+    if (questions.isEmpty) return;
+
+    final currentQ = questions[currentIndex];
+
+    // Save answer locally
     if (currentQ.isEssay) {
       _userEssayAnswers[currentIndex] = essayAnswer;
-      // For essay, we'll check later (not auto-scoring)
     } else {
       _userAnswers[currentIndex] = selectedIndex ?? -1;
-      // Check if answer is correct
       if (selectedIndex == currentQ.correctIndex) {
         score++;
       }
     }
-    
+
+    // Submit Answer to Backend in real-time
+    setState(() => _isLoading = true);
+    await _submitCurrentAnswer();
+    setState(() => _isLoading = false);
+
     if (currentIndex < questions.length - 1) {
+      // Move to next question
       setState(() {
         currentIndex++;
         // Restore previous answer if exists, otherwise reset
@@ -192,6 +315,7 @@ class _QuizScreenState extends State<QuizScreen> {
         _updateEssayController();
       });
     } else {
+      // Last question - navigate to finish screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -211,42 +335,35 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _updateEssayController() {
     final savedAnswer = _userEssayAnswers[currentIndex] ?? "";
-    // Dispose old controller if exists
     _essayController?.dispose();
-    // Create new controller with saved answer
     _essayController = TextEditingController(text: savedAnswer);
     essayAnswer = savedAnswer;
   }
 
   Widget _buildEssayField() {
-    // Ensure controller is initialized with current answer
     final savedAnswer = _userEssayAnswers[currentIndex] ?? "";
     if (_essayController == null || _essayController!.text != savedAnswer) {
       _essayController?.dispose();
       _essayController = TextEditingController(text: savedAnswer);
       essayAnswer = savedAnswer;
     }
-    
+
     return Directionality(
-      textDirection: TextDirection.ltr, // Force left-to-right direction
+      textDirection: TextDirection.ltr,
       child: TextField(
-        key: ValueKey('essay_$currentIndex'), // Unique key per question
+        key: ValueKey('essay_$currentIndex'),
         controller: _essayController,
         maxLines: 5,
-        textDirection: TextDirection.ltr, // Force left-to-right text direction
-        textAlign: TextAlign.start, // Use start instead of left for better RTL support
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.start,
         keyboardType: TextInputType.text,
         decoration: InputDecoration(
           hintText: "Ketik jawaban kamu di sini",
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onChanged: (val) {
-          setState(() {
-            essayAnswer = val;
-            _userEssayAnswers[currentIndex] = val;
-          });
+          essayAnswer = val;
+          _userEssayAnswers[currentIndex] = val;
         },
       ),
     );
@@ -260,6 +377,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading if loading OR if submitting answer (nextQuestion triggers setState _isLoading)
     if (_isLoading) {
       return Scaffold(
         body: SafeArea(
@@ -269,7 +387,12 @@ class _QuizScreenState extends State<QuizScreen> {
               children: [
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
-                Text(_errorMessage ?? 'Memuat soal...'),
+                Text(
+                  _errorMessage ??
+                      (questions.isEmpty
+                          ? 'Menyiapkan Quiz...'
+                          : 'Menyimpan Jawaban...'),
+                ),
               ],
             ),
           ),
@@ -286,11 +409,7 @@ class _QuizScreenState extends State<QuizScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red[300],
-                  ),
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
                   const SizedBox(height: 16),
                   Text(
                     'Oops! Terjadi Kesalahan',
@@ -306,7 +425,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: _loadQuestions,
+                    onPressed: _initQuiz,
                     child: const Text('Coba Lagi'),
                   ),
                 ],
@@ -319,14 +438,15 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final question = questions[currentIndex];
     final progress = (currentIndex + 1) / questions.length;
-    
-    // Initialize essay controller if needed (for essay questions)
+
+    // Initialize essay controller if needed
     if (question.isEssay && _essayController == null) {
       _updateEssayController();
     }
-    
-    // Get current answer state (for display only, don't modify state here)
-    final currentSelectedIndex = !question.isEssay && _userAnswers.containsKey(currentIndex)
+
+    // Get current answer state
+    final currentSelectedIndex =
+        !question.isEssay && _userAnswers.containsKey(currentIndex)
         ? (_userAnswers[currentIndex] == -1 ? null : _userAnswers[currentIndex])
         : selectedIndex;
 
