@@ -62,7 +62,11 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _initQuiz() async {
+    print('');
+    print('========================================');
     print('🚀 _initQuiz STARTED for level ${widget.levelId}');
+    print('========================================');
+    print('');
 
     setState(() {
       _isLoading = true;
@@ -72,8 +76,10 @@ class _QuizScreenState extends State<QuizScreen> {
     try {
       final apiService = ApiService();
 
-      // 1. Create Attempt
+      print('');
+      print('>>> STEP 1: Creating Attempt <<<');
       print('📝 Creating attempt for level ${widget.levelId}');
+
       final attemptRes = await apiService.createAttempt(widget.levelId);
 
       print('📥 Attempt response received: $attemptRes');
