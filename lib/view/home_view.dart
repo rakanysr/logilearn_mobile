@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logilearn/services/api_service.dart';
 import 'package:logilearn/services/auth_service.dart';
 import 'package:logilearn/view/login_view.dart';
+import 'package:logilearn/view/quiz_view.dart';
 import 'package:logilearn/widget/bottombar.dart';
 
 class HomeView extends StatefulWidget {
@@ -20,9 +20,9 @@ class _HomeViewState extends State<HomeView> {
   final int _currentBottomNavIndex = 0;
   String? _username;
   bool _isLoading = true;
-  String? _errorMessage;
 
   List<Map<String, dynamic>> _sections = [];
+  List<Map<String, dynamic>> _levels = [];
   final _storage = const FlutterSecureStorage();
 
   // Default Sections (Fallback)
@@ -75,7 +75,6 @@ class _HomeViewState extends State<HomeView> {
   Future<void> _fetchSections() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     final apiService = ApiService();
@@ -148,10 +147,19 @@ class _HomeViewState extends State<HomeView> {
               'unlockedLevel': unlocked,
               'levelScores': scores,
               'totalLevels': totalLev,
+              'slug': item['slug'] ?? 'section-${i + 1}',
+              'id': item['id'],
             });
           }
 
           _sections = parsedSections;
+          
+          // Load levels for the first section
+          if (_sections.isNotEmpty) {
+            final firstSection = _sections[0];
+            final slugSection = firstSection['slug'] as String? ?? 'section-1';
+            _loadLevelsForSection(slugSection);
+          }
         } catch (e) {
           print("Error parsing sections: $e");
           _useDefaultSections();
@@ -172,13 +180,22 @@ class _HomeViewState extends State<HomeView> {
 
   void _useDefaultSections() {
     _sections = List.from(_defaultSections);
-    // Fix: Ensure first section has at least level 1 unlocked
-    if (_sections.isNotEmpty) {
-      if ((_sections[0]['unlockedLevel'] as int) < 1) {
-        final updatedSection = Map<String, dynamic>.from(_sections[0]);
-        updatedSection['unlockedLevel'] = 1;
-        _sections[0] = updatedSection;
+    // Fix: Ensure first section has at least level 1 unlocked and add slug
+    for (var i = 0; i < _sections.length; i++) {
+      final section = Map<String, dynamic>.from(_sections[i]);
+      if (i == 0 && (section['unlockedLevel'] as int) < 1) {
+        section['unlockedLevel'] = 1;
       }
+      section['slug'] = 'section-${i + 1}';
+      section['id'] = i + 1;
+      _sections[i] = section;
+    }
+    
+    // Load levels for the first section
+    if (_sections.isNotEmpty) {
+      final firstSection = _sections[0];
+      final slugSection = firstSection['slug'] as String? ?? 'section-1';
+      _loadLevelsForSection(slugSection);
     }
   }
 
@@ -193,15 +210,127 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
-  void _navigateToLevelDetail(int level) {
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(builder: (context) => const QuizScreen()),
-    // );
-    // TODO: Implement QuizScreen navigation if available
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Quiz Screen not yet implemented in restoration'),
+  Future<void> _loadLevelsForSection(String slugSection) async {
+    print('_loadLevelsForSection called with slug: $slugSection');
+    final apiService = ApiService();
+    final result = await apiService.getLevelsBySection(slugSection);
+
+    print('getLevelsBySection result success: ${result['success']}');
+
+    if (result['success']) {
+      final fullResponse = result['data'];
+      List<dynamic> levelsList = [];
+
+      // Parse response structure from helpers/response.js
+      // Structure: { payload: { datas: [...] } }
+      if (fullResponse is Map &&
+          fullResponse['payload'] is Map &&
+          fullResponse['payload']['datas'] is List) {
+        levelsList = fullResponse['payload']['datas'];
+        print('Parsed levels from payload.datas: ${levelsList.length}');
+      } else if (fullResponse is Map && fullResponse['datas'] is List) {
+        levelsList = fullResponse['datas'];
+        print('Parsed levels from datas: ${levelsList.length}');
+      } else if (fullResponse is List) {
+        levelsList = fullResponse;
+        print('Parsed levels from direct list: ${levelsList.length}');
+      }
+
+      if (mounted) {
+        setState(() {
+          _levels = levelsList.map<Map<String, dynamic>>((level) {
+            final levelMap = level is Map<String, dynamic> 
+                ? level 
+                : (level is Map ? Map<String, dynamic>.from(level) : <String, dynamic>{});
+            return {
+              'id': levelMap['id'],
+              'nama': levelMap['nama'] ?? 'Level',
+            };
+          }).toList();
+          
+          // Sort levels by id to ensure consistent ordering
+          _levels.sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
+          
+          print('Loaded ${_levels.length} levels into state:');
+          for (var i = 0; i < _levels.length; i++) {
+            print('  Index $i: id=${_levels[i]['id']}, nama=${_levels[i]['nama']}');
+          }
+        });
+      }
+    } else {
+      print('Failed to load levels: ${result['message']}');
+    }
+  }
+
+  void _navigateToLevelDetail(int levelIndex) async {
+    if (_sections.isEmpty || _selectedSectionIndex >= _sections.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Section tidak ditemukan'),
+        ),
+      );
+      return;
+    }
+
+    final selectedSection = _sections[_selectedSectionIndex];
+    final slugSection = selectedSection['slug'] as String? ?? 'section-${_selectedSectionIndex + 1}';
+
+    print('_navigateToLevelDetail called:');
+    print('  levelIndex: $levelIndex');
+    print('  slugSection: $slugSection');
+    print('  _levels.length: ${_levels.length}');
+
+    // Always load levels for this section to ensure we have the latest data
+    await _loadLevelsForSection(slugSection);
+
+    // Wait a bit for state to update
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Check if level exists
+    if (levelIndex >= _levels.length || _levels.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Level tidak ditemukan. Total levels: ${_levels.length}'),
+        ),
+      );
+      return;
+    }
+
+    final level = _levels[levelIndex];
+    // Ensure levelId is int
+    final levelId = level['id'] is int 
+        ? level['id'] as int 
+        : int.tryParse(level['id'].toString()) ?? 0;
+    final sectionTitle = selectedSection['title'] as String;
+    final sectionNumber = _selectedSectionIndex + 1;
+
+    print('Navigating to QuizScreen:');
+    print('  sectionSlug: $slugSection');
+    print('  levelId: $levelId');
+    print('  sectionTitle: $sectionTitle');
+    print('  sectionNumber: $sectionNumber');
+    print('  levelNumber: ${levelIndex + 1}');
+
+    if (levelId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ID Level tidak valid'),
+        ),
+      );
+      return;
+    }
+
+    // Navigate to quiz screen with level data
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QuizScreen(
+          sectionSlug: slugSection,
+          levelId: levelId,
+          sectionTitle: sectionTitle,
+          sectionNumber: sectionNumber,
+          levelNumber: levelIndex + 1,
+        ),
       ),
     );
   }
@@ -285,8 +414,9 @@ class _HomeViewState extends State<HomeView> {
       unlocked = selected['unlockedLevel'];
     }
 
-    int total = 10;
-    if (selected['totalLevels'] is int) {
+    // Use actual levels count from backend, or fallback to totalLevels
+    int total = _levels.isNotEmpty ? _levels.length : 10;
+    if (selected['totalLevels'] is int && _levels.isEmpty) {
       total = selected['totalLevels'];
     }
 
@@ -462,37 +592,67 @@ class _HomeViewState extends State<HomeView> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20.0),
-                    child: Column(
-                      children: List.generate(total, (index) {
-                        final isUnlocked = index < unlocked;
-                        // Handle list safety
-                        List scores = [];
-                        if (selected['levelScores'] is List) {
-                          scores = selected['levelScores'];
-                        }
+                    child: _levels.isEmpty
+                        ? Column(
+                            children: [
+                              const SizedBox(height: 40),
+                              Icon(
+                                Icons.info_outline,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Belum Ada Level',
+                                style: GoogleFonts.inter(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Level untuk section ini belum tersedia',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            children: List.generate(_levels.length, (index) {
+                              // Use actual levels from backend
+                              final isUnlocked = index < unlocked;
+                              // Handle list safety
+                              List scores = [];
+                              if (selected['levelScores'] is List) {
+                                scores = selected['levelScores'];
+                              }
 
-                        final Color sectionColor = selected['color'] as Color;
+                              final Color sectionColor = selected['color'] as Color;
 
-                        final dx = (index % 4 == 0)
-                            ? -screenWidth * 0.2
-                            : (index % 4 == 1)
-                            ? 0.0
-                            : (index % 4 == 2)
-                            ? screenWidth * 0.2
-                            : 0.0;
+                              final dx = (index % 4 == 0)
+                                  ? -screenWidth * 0.2
+                                  : (index % 4 == 1)
+                                  ? 0.0
+                                  : (index % 4 == 2)
+                                  ? screenWidth * 0.2
+                                  : 0.0;
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 20.0),
-                          child: Transform.translate(
-                            offset: Offset(dx, 0),
-                            child: GestureDetector(
-                              onTap: () {
-                                if (isUnlocked) {
-                                  _navigateToLevelDetail(index + 1);
-                                } else {
-                                  _showLockedPopup();
-                                }
-                              },
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 20.0),
+                                child: Transform.translate(
+                                  offset: Offset(dx, 0),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      if (isUnlocked) {
+                                        _navigateToLevelDetail(index);
+                                      } else {
+                                        _showLockedPopup();
+                                      }
+                                    },
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -588,8 +748,8 @@ class _HomeViewState extends State<HomeView> {
                             ),
                           ),
                         );
-                      }),
-                    ),
+                            }),
+                          ),
                   ),
                 ],
               ),
@@ -616,7 +776,12 @@ class _HomeViewState extends State<HomeView> {
                             setState(() {
                               _selectedSectionIndex = index;
                               _isDropdownOpen = false;
+                              _levels = []; // Reset levels when section changes
                             });
+                            // Load levels for selected section
+                            final selectedSection = _sections[index];
+                            final slugSection = selectedSection['slug'] as String? ?? 'section-${index + 1}';
+                            _loadLevelsForSection(slugSection);
                           },
                           borderRadius: BorderRadius.circular(18),
                           child: Container(

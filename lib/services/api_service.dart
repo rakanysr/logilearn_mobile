@@ -41,4 +41,75 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+
+  Future<Map<String, dynamic>> getLevelsBySection(String slugSection) async {
+    final url = Uri.parse('$baseUrl/$slugSection/levels');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': 'Failed to load levels'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getLevelById(String slugSection, int levelId) async {
+    final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      print('getLevelById - Status Code: ${response.statusCode}');
+      print('getLevelById - URL: $url');
+      print('getLevelById - Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final errorBody = response.body;
+        return {
+          'success': false,
+          'message': 'Failed to load level (Status: ${response.statusCode})',
+          'error': errorBody,
+        };
+      }
+    } catch (e) {
+      print('getLevelById - Exception: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getSoalsByLevel(String slugSection, int levelId) async {
+    final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId/soal');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      print('getSoalsByLevel - Status Code: ${response.statusCode}');
+      print('getSoalsByLevel - URL: $url');
+      print('getSoalsByLevel - Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        final errorBody = response.body;
+        return {
+          'success': false,
+          'message': 'Failed to load soals (Status: ${response.statusCode})',
+          'error': errorBody,
+        };
+      }
+    } catch (e) {
+      print('getSoalsByLevel - Exception: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
 }
