@@ -22,8 +22,6 @@ class ApiService {
     };
   }
 
-  // --- Data ---
-
   Future<Map<String, dynamic>> getSections() async {
     final url = Uri.parse('$baseUrl/sections');
     try {
@@ -41,6 +39,7 @@ class ApiService {
     }
   }
 
+  // Need this for profile fetching
   Future<Map<String, dynamic>> getProfile() async {
     final url = Uri.parse('$baseUrl/profile');
     try {
@@ -54,8 +53,69 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> changePassword(
+    String oldPassword,
+    String newPassword,
+  ) async {
+    final url = Uri.parse('$baseUrl/profile/change-password');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      // Backend helper response returns { meta: { code: ..., message: ... }, payload: ... }
+      // or similar depending on helper/response.js.
+      // But ChangePasswordView expects { payload: { message: ... }, status_code: ... }
+
+      return {
+        'status_code': response.statusCode,
+        'payload': data['payload'] ?? data, // fallback
+        'message': data['message'] ?? data['meta']?['message'],
+      };
+    } catch (e) {
+      return {'status_code': 500, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getSoalsByLevel(
+    String slugSection,
+    int levelId,
+  ) async {
+    final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId/soal');
   Future<Map<String, dynamic>> getLevelsBySection(String slugSection) async {
     final url = Uri.parse('$baseUrl/$slugSection/levels');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to load soals (Status: ${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getLevelsBySection(String slugSection) async {
+    final url = Uri.parse('$baseUrl/$slugSection/levels');
+  Future<Map<String, dynamic>> getLevelById(
+    String slugSection,
+    int levelId,
+  ) async {
+    final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId');
     try {
       final headers = await _getHeaders();
       final response = await http.get(url, headers: headers);
@@ -71,36 +131,55 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getLevelById(
-    String slugSection,
-    int levelId,
-  ) async {
-    final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId');
+  // --- Attempts (Real-time Submission) ---
+
+  /// Create a new attempt for a level
+  /// This should be called when the quiz starts
+  Future<Map<String, dynamic>> createAttempt(int levelId) async {
+    final url = Uri.parse('$baseUrl/attempts');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers);
 
-      print('getLevelById - Status Code: ${response.statusCode}');
-      print('getLevelById - URL: $url');
-      print('getLevelById - Response Body: ${response.body}');
+      print('=== CREATE ATTEMPT DEBUG ===');
+      print('URL: $url');
+      print('Headers: $headers');
+      print('Body: ${jsonEncode({'id_level': levelId})}');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {'success': true, 'data': data};
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({'id_level': levelId}),
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+      print('=== END DEBUG ===');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return {'success': true, 'data': body};
       } else {
         final errorBody = response.body;
         return {
           'success': false,
-          'message': 'Failed to load level (Status: ${response.statusCode})',
-          'error': errorBody,
+          'message':
+              'Failed to create attempt: ${response.statusCode} - $errorBody',
         };
       }
     } catch (e) {
-      print('getLevelById - Exception: $e');
+      print('EXCEPTION in createAttempt: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
 
+  /// Submit a PG (multiple choice) answer
+  /// Endpoint: POST /attempts/:idAttempt/jawaban-pg
+  /// Body: { "idOpsi": int }
+  Future<Map<String, dynamic>> submitJawabanPG(
+    int attemptId,
+    int opsiId,
+  ) async {
+    final url = Uri.parse('$baseUrl/attempts/$attemptId/jawaban-pg');
   Future<Map<String, dynamic>> getSoalsByLevel(
     String slugSection,
     int levelId,
@@ -108,29 +187,40 @@ class ApiService {
     final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId/soal');
     try {
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers);
+      print('Submitting PG to: $url');
+      print('Payload: {idOpsi: $opsiId}');
 
-      print('getSoalsByLevel - Status Code: ${response.statusCode}');
-      print('getSoalsByLevel - URL: $url');
-      print('getSoalsByLevel - Response Body: ${response.body}');
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({'idOpsi': opsiId}),
+      );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {'success': true, 'data': data};
+      print('PG Response status: ${response.statusCode}');
+      print('PG Response body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return {'success': true, 'data': body};
       } else {
-        final errorBody = response.body;
         return {
           'success': false,
-          'message': 'Failed to load soals (Status: ${response.statusCode})',
-          'error': errorBody,
+          'message': 'Failed to submit PG answer: ${response.statusCode}',
         };
       }
     } catch (e) {
-      print('getSoalsByLevel - Exception: $e');
+      print('Exception in submitJawabanPG: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
 
+  /// Submit an essay answer
+  /// Endpoint: POST /attempts/:idAttempt/jawaban-esai/:idSoal
+  /// Body: { "jawaban": string }
+  Future<Map<String, dynamic>> submitJawabanEsai(
+    int attemptId,
+    int soalId,
+    String jawaban,
   Future<Map<String, dynamic>> submitAttempt(
     int levelId,
     int pelajarId,
@@ -171,17 +261,55 @@ class ApiService {
     String oldPw,
     String newPw,
   ) async {
-    final url = Uri.parse('$baseUrl/profile/change-password');
+    final url = Uri.parse('$baseUrl/attempts/$attemptId/jawaban-esai/$soalId');
     try {
       final headers = await _getHeaders();
-      final response = await http.put(
+      print('Submitting Essay to: $url');
+      print('Payload: {jawaban: $jawaban}');
+
+      final response = await http.post(
         url,
         headers: headers,
-        body: jsonEncode({'oldPassword': oldPw, 'newPassword': newPw}),
+        body: jsonEncode({'jawaban': jawaban}),
       );
-      return jsonDecode(response.body);
+
+      print('Essay Response status: ${response.statusCode}');
+      print('Essay Response body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return {'success': true, 'data': body};
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to submit Essay answer: ${response.statusCode}',
+        };
+      }
     } catch (e) {
-      return {'status': 500, 'message': e.toString()};
+      print('Exception in submitJawabanEsai: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getAttempts({int? levelId}) async {
+    var urlString = '$baseUrl/attempts';
+    if (levelId != null) {
+      urlString += '?level_id=$levelId';
+    }
+    final url = Uri.parse(urlString);
+
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'message': 'Failed to fetch attempts'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
     }
   }
 }
