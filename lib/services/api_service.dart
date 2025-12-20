@@ -53,6 +53,7 @@ class ApiService {
       return {'status_code': 500, 'message': e.toString()};
     }
   }
+
   Future<Map<String, dynamic>> getLevelsBySection(String slugSection) async {
     final url = Uri.parse('$baseUrl/$slugSection/levels');
     try {
@@ -70,7 +71,10 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getLevelById(String slugSection, int levelId) async {
+  Future<Map<String, dynamic>> getLevelById(
+    String slugSection,
+    int levelId,
+  ) async {
     final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId');
     try {
       final headers = await _getHeaders();
@@ -97,7 +101,10 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getSoalsByLevel(String slugSection, int levelId) async {
+  Future<Map<String, dynamic>> getSoalsByLevel(
+    String slugSection,
+    int levelId,
+  ) async {
     final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId/soal');
     try {
       final headers = await _getHeaders();
@@ -120,6 +127,42 @@ class ApiService {
       }
     } catch (e) {
       print('getSoalsByLevel - Exception: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> submitAttempt(
+    int levelId,
+    int pelajarId,
+    List<Map<String, dynamic>> answers,
+  ) async {
+    final url = Uri.parse('$baseUrl/attempts/submit');
+    try {
+      final headers = await _getHeaders();
+      final body = jsonEncode({
+        'id_level': levelId,
+        'id_pelajar': pelajarId,
+        'answers': answers,
+      });
+
+      final response = await http.post(url, headers: headers, body: body);
+
+      print('submitAttempt - Status Code: ${response.statusCode}');
+      print('submitAttempt - Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {
+          'success': false,
+          'message':
+              'Failed to submit attempt (Status: ${response.statusCode})',
+          'error': response.body,
+        };
+      }
+    } catch (e) {
+      print('submitAttempt - Exception: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
