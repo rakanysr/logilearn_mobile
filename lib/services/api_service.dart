@@ -41,7 +41,18 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+  Future<Map<String, dynamic>> getProfile() async {
+    final url = Uri.parse('$baseUrl/profile');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
 
+      final data = jsonDecode(response.body);
+      return {'status_code': response.statusCode, 'data': data};
+    } catch (e) {
+      return {'status_code': 500, 'message': e.toString()};
+    }
+  }
   Future<Map<String, dynamic>> getLevelsBySection(String slugSection) async {
     final url = Uri.parse('$baseUrl/$slugSection/levels');
     try {
