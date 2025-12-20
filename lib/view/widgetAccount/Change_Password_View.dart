@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:logilearn/services/api_service.dart';
 
 class ChangePasswordView extends StatefulWidget {
   const ChangePasswordView({super.key});
@@ -9,143 +10,220 @@ class ChangePasswordView extends StatefulWidget {
 }
 
 class _ChangePasswordViewState extends State<ChangePasswordView> {
-  final TextEditingController _currentPasswordController =
-      TextEditingController();
-  final TextEditingController _newPasswordController = TextEditingController();
-  bool _obscureCurrent = true;
+  final _oldPwController = TextEditingController();
+  final _newPwController = TextEditingController();
+  final _apiService = ApiService();
+
+  bool _isLoading = false;
+  bool _obscureOld = true;
   bool _obscureNew = true;
+
+  void _handleUpdate() async {
+    if (_oldPwController.text.isEmpty || _newPwController.text.isEmpty) {
+      _showMsg("Mohon isi semua data!", Colors.orange);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final response = await _apiService.changePassword(
+      _oldPwController.text,
+      _newPwController.text,
+    );
+
+    setState(() => _isLoading = false);
+
+    String message =
+        response['payload']?['message'] ?? response['message'] ?? "";
+    bool isSuccess =
+        response['status_code'] == 200 ||
+        response['status'] == 200 ||
+        message.toLowerCase().contains("berhasil");
+
+    if (isSuccess) {
+      final messenger = ScaffoldMessenger.of(context);
+
+      if (mounted) Navigator.of(context).pop();
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            "Sandi berhasil diperbarui!",
+            style: GoogleFonts.inter(),
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(20),
+        ),
+      );
+    } else {
+      _showMsg(
+        message.isEmpty ? "Gagal mengubah sandi" : message,
+        Colors.redAccent,
+      );
+    }
+  }
+
+  void _showMsg(String msg, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.inter()),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(20),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: Text(
-          'Ganti Sandi',
-          style: GoogleFonts.getFont(
-            'Inter',
-            fontWeight: FontWeight.w600,
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
             color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          "Ganti Kata Sandi",
+          style: GoogleFonts.inter(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
           ),
         ),
+        centerTitle: true,
       ),
-      backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Kata Sandi Saat Ini',
-              style: GoogleFonts.getFont(
-                'Inter',
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _currentPasswordController,
-              obscureText: _obscureCurrent,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscureCurrent
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: Colors.grey[600],
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureCurrent = !_obscureCurrent;
-                    });
-                  },
-                ),
-              ),
-              style: GoogleFonts.getFont('Inter'),
-            ),
             const SizedBox(height: 20),
             Text(
-              'Kata Sandi Baru',
-              style: GoogleFonts.getFont(
-                'Inter',
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+              "Ganti Kata Sandi",
+              style: GoogleFonts.inter(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1E1E1E),
               ),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _newPasswordController,
-              obscureText: _obscureNew,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscureNew
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: Colors.grey[600],
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureNew = !_obscureNew;
-                    });
-                  },
-                ),
-              ),
-              style: GoogleFonts.getFont('Inter'),
+            Text(
+              "Pastikan kata sandi baru Anda kuat dan sulit ditebak oleh orang lain.",
+              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
             ),
-            const SizedBox(height: 30),
-            Center(
+            const SizedBox(height: 40),
+            _buildInputLabel("Kata Sandi Lama"),
+            _buildPasswordField(
+              controller: _oldPwController,
+              hint: "Masukkan sandi lama",
+              isObscured: _obscureOld,
+              onToggle: () => setState(() => _obscureOld = !_obscureOld),
+            ),
+            const SizedBox(height: 24),
+            _buildInputLabel("Kata Sandi Baru"),
+            _buildPasswordField(
+              controller: _newPwController,
+              hint: "Masukkan sandi baru",
+              isObscured: _obscureNew,
+              onToggle: () => setState(() => _obscureNew = !_obscureNew),
+            ),
+            const SizedBox(height: 48),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  // logika ganti sandi nanti di sini
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Kata sandi berhasil diganti'),
-                    ),
-                  );
-                },
+                onPressed: _isLoading ? null : _handleUpdate,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2977FF),
-                  minimumSize: const Size(double.infinity, 45),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  elevation: 0,
                 ),
-                child: Text(
-                  'Simpan',
-                  style: GoogleFonts.getFont(
-                    'Inter',
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : Text(
+                        "SIMPAN PERUBAHAN",
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String hint,
+    required bool isObscured,
+    required VoidCallback onToggle,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F7FA),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isObscured,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.inter(color: Colors.grey[400], fontSize: 14),
+          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 22),
+          suffixIcon: IconButton(
+            icon: Icon(
+              isObscured
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              size: 20,
+            ),
+            onPressed: onToggle,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
         ),
       ),
     );
