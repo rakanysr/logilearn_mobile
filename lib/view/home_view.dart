@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:logilearn/services/api_service.dart';
+import 'package:logilearn/services/auth_service.dart';
+import 'package:logilearn/view/login_view.dart';
 import 'package:logilearn/widget/bottombar.dart';
-import 'package:logilearn/view/quiz_view.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -14,15 +18,22 @@ class _HomeViewState extends State<HomeView> {
   bool _isDropdownOpen = false;
   int _selectedSectionIndex = 0;
   final int _currentBottomNavIndex = 0;
+  String? _username;
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  final List<Map<String, dynamic>> _sections = [
+  List<Map<String, dynamic>> _sections = [];
+  final _storage = const FlutterSecureStorage();
+
+  // Default Sections (Fallback)
+  final List<Map<String, dynamic>> _defaultSections = [
     {
       'section': 'SECTION 1',
       'title': 'LOGIKA DASAR',
       'color': const Color(0xFF2F80ED),
       'image': 'assets/images/Mascot halo.png',
-      'unlockedLevel': 4,
-      'levelScores': [100, 85, 90, 0],
+      'unlockedLevel': 0,
+      'levelScores': <int>[], // Explicit type
       'totalLevels': 10,
     },
     {
@@ -31,7 +42,7 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF2D9CDB),
       'image': 'assets/images/Mascot banyak.png',
       'unlockedLevel': 0,
-      'levelScores': [],
+      'levelScores': <int>[], // Explicit type
       'totalLevels': 10,
     },
     {
@@ -40,15 +51,158 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF27AE60),
       'image': 'assets/images/Mascot buntung.png',
       'unlockedLevel': 0,
-      'levelScores': [],
+      'levelScores': <int>[], // Explicit type
       'totalLevels': 10,
     },
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+    _fetchSections();
+  }
+
+  Future<void> _loadUserData() async {
+    final name = await _storage.read(key: 'nama_pelajar');
+    if (mounted) {
+      setState(() {
+        _username = name ?? 'Teman';
+      });
+    }
+  }
+
+  Future<void> _fetchSections() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final apiService = ApiService();
+    final result = await apiService.getSections();
+
+    if (result['success']) {
+      final fullResponse = result['data'];
+      List<dynamic> sectionsList = [];
+
+      // Parsing the specific structure from helpers/response.js
+      // Structure: { payload: { datas: [...] } }
+      if (fullResponse is Map &&
+          fullResponse['payload'] is Map &&
+          fullResponse['payload']['datas'] is List) {
+        sectionsList = fullResponse['payload']['datas'];
+      } else if (fullResponse is List) {
+        // Fallback if structure changes
+        sectionsList = fullResponse;
+      }
+
+      if (sectionsList.isNotEmpty) {
+        try {
+          final List<Map<String, dynamic>> parsedSections = [];
+
+          for (var i = 0; i < sectionsList.length; i++) {
+            final item = sectionsList[i];
+
+            // Color Assignment based on index
+            Color sectionColor;
+            if (i % 3 == 0)
+              sectionColor = const Color(0xFF2F80ED);
+            else if (i % 3 == 1)
+              sectionColor = const Color(0xFF2D9CDB);
+            else
+              sectionColor = const Color(0xFF27AE60);
+
+            // Image Assignment based on index
+            String imageAsset;
+            if (i % 3 == 0)
+              imageAsset = 'assets/images/Mascot halo.png';
+            else if (i % 3 == 1)
+              imageAsset = 'assets/images/Mascot banyak.png';
+            else
+              imageAsset = 'assets/images/Mascot buntung.png';
+
+            // Unlocked Level Logic
+            // Since backend doesn't return user progress yet, we unlock Section 1 (index 0) fully or partially
+            // For now, let's unlock Level 1 of Section 1 by default.
+            int unlocked = 0;
+            if (i == 0) {
+              unlocked = 1;
+            }
+
+            // Levels parsing
+            List<dynamic> levels = [];
+            if (item['levels'] is List) {
+              levels = item['levels'];
+            }
+            // Calculate total levels from backend data
+            int totalLev = levels.isNotEmpty ? levels.length : 10;
+
+            // Generate empty scores for now
+            List<int> scores = [];
+
+            parsedSections.add({
+              'section': 'SECTION ${i + 1}',
+              'title': item['nama'] ?? 'LOGIKA',
+              'color': sectionColor,
+              'image': imageAsset,
+              'unlockedLevel': unlocked,
+              'levelScores': scores,
+              'totalLevels': totalLev,
+            });
+          }
+
+          _sections = parsedSections;
+        } catch (e) {
+          print("Error parsing sections: $e");
+          _useDefaultSections();
+        }
+      } else {
+        _useDefaultSections();
+      }
+    } else {
+      _useDefaultSections();
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _useDefaultSections() {
+    _sections = List.from(_defaultSections);
+    // Fix: Ensure first section has at least level 1 unlocked
+    if (_sections.isNotEmpty) {
+      if ((_sections[0]['unlockedLevel'] as int) < 1) {
+        final updatedSection = Map<String, dynamic>.from(_sections[0]);
+        updatedSection['unlockedLevel'] = 1;
+        _sections[0] = updatedSection;
+      }
+    }
+  }
+
+  void _logout() async {
+    final authService = AuthService();
+    await authService.logout();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginView()),
+        (route) => false,
+      );
+    }
+  }
+
   void _navigateToLevelDetail(int level) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const QuizScreen()),
+    // Navigator.push(
+    //   context,
+    //   MaterialPageRoute(builder: (context) => const QuizScreen()),
+    // );
+    // TODO: Implement QuizScreen navigation if available
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Quiz Screen not yet implemented in restoration'),
+      ),
     );
   }
 
@@ -108,12 +262,37 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   Widget build(BuildContext context) {
-    final selected = _sections[_selectedSectionIndex];
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Ensure we have valid selection index
+    if (_selectedSectionIndex >= _sections.length) {
+      _selectedSectionIndex = 0;
+    }
+
+    final selected = _sections.isNotEmpty
+        ? _sections[_selectedSectionIndex]
+        : _defaultSections[0];
     final screenWidth = MediaQuery.of(context).size.width;
-    int unlocked = selected['unlockedLevel'];
-    int total = selected['totalLevels'];
-    double sectionProgress = unlocked / total; // Nilai 0.0 - 1.0
+
+    // Safely handle types
+    int unlocked = 0;
+    if (selected['unlockedLevel'] is int) {
+      unlocked = selected['unlockedLevel'];
+    }
+
+    int total = 10;
+    if (selected['totalLevels'] is int) {
+      total = selected['totalLevels'];
+    }
+
+    double sectionProgress = total > 0 ? unlocked / total : 0.0;
     int percentageDisplay = (sectionProgress * 100).toInt();
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -125,14 +304,31 @@ class _HomeViewState extends State<HomeView> {
                   Container(
                     width: double.infinity,
                     alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.only(top: 15.0, left: 15.0),
-                    child: Text(
-                      'Selamat Datang, Jakarta Jawa',
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
+                    padding: const EdgeInsets.only(
+                      top: 15.0,
+                      left: 15.0,
+                      right: 15.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Selamat Datang, ${_username ?? 'Teman'}',
+                            style: GoogleFonts.inter(
+                              fontSize:
+                                  18, // Slightly reduced font size to fit name
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _logout,
+                          icon: const Icon(Icons.logout, color: Colors.grey),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -155,11 +351,13 @@ class _HomeViewState extends State<HomeView> {
                             horizontal: 20,
                           ),
                           decoration: BoxDecoration(
-                            color: selected['color'],
+                            color: selected['color'] as Color, // Cast to Color
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: selected['color'].withOpacity(0.3),
+                                color: (selected['color'] as Color).withOpacity(
+                                  0.3,
+                                ),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -180,7 +378,7 @@ class _HomeViewState extends State<HomeView> {
                                     ),
                                   ),
                                   Text(
-                                    selected['title'],
+                                    '${selected['title']}',
                                     style: GoogleFonts.inter(
                                       color: Colors.white,
                                       fontSize: 18,
@@ -204,7 +402,7 @@ class _HomeViewState extends State<HomeView> {
                   ),
 
                   const SizedBox(height: 20),
-                  Image.asset(selected['image'], height: 120),
+                  Image.asset('${selected['image']}', height: 120),
                   const SizedBox(height: 12),
 
                   // Progress Section
@@ -227,7 +425,7 @@ class _HomeViewState extends State<HomeView> {
                               '$percentageDisplay%',
                               style: GoogleFonts.inter(
                                 fontSize: 14,
-                                color: selected['color'],
+                                color: selected['color'] as Color,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -240,7 +438,7 @@ class _HomeViewState extends State<HomeView> {
                             value: sectionProgress,
                             minHeight: 10,
                             backgroundColor: Colors.grey[200],
-                            color: selected['color'],
+                            color: selected['color'] as Color,
                           ),
                         ),
                       ],
@@ -255,7 +453,7 @@ class _HomeViewState extends State<HomeView> {
                     ),
                   ),
                   Text(
-                    selected['title'],
+                    '${selected['title']}',
                     style: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -265,9 +463,16 @@ class _HomeViewState extends State<HomeView> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20.0),
                     child: Column(
-                      children: List.generate(selected['totalLevels'], (index) {
-                        final isUnlocked = index < selected['unlockedLevel'];
-                        final scores = selected['levelScores'] as List<dynamic>;
+                      children: List.generate(total, (index) {
+                        final isUnlocked = index < unlocked;
+                        // Handle list safety
+                        List scores = [];
+                        if (selected['levelScores'] is List) {
+                          scores = selected['levelScores'];
+                        }
+
+                        final Color sectionColor = selected['color'] as Color;
+
                         final dx = (index % 4 == 0)
                             ? -screenWidth * 0.2
                             : (index % 4 == 1)
@@ -300,13 +505,13 @@ class _HomeViewState extends State<HomeView> {
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: isUnlocked
-                                              ? selected['color']
+                                              ? sectionColor
                                               : Colors.grey[300],
                                           boxShadow: [
                                             BoxShadow(
                                               color:
                                                   (isUnlocked
-                                                          ? selected['color']
+                                                          ? sectionColor
                                                           : Colors.grey[300])!
                                                       .withOpacity(0.3),
                                               blurRadius: 10,
@@ -362,7 +567,7 @@ class _HomeViewState extends State<HomeView> {
                                               shape: BoxShape.circle,
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: selected['color']
+                                                  color: sectionColor
                                                       .withOpacity(0.3),
                                                   blurRadius: 4,
                                                   offset: const Offset(0, 2),
@@ -371,7 +576,7 @@ class _HomeViewState extends State<HomeView> {
                                             ),
                                             child: Icon(
                                               Icons.check_circle,
-                                              color: selected['color'],
+                                              color: sectionColor,
                                               size: 22,
                                             ),
                                           ),
@@ -425,11 +630,11 @@ class _HomeViewState extends State<HomeView> {
                               vertical: 0,
                             ),
                             decoration: BoxDecoration(
-                              color: s['color'],
+                              color: s['color'] as Color,
                               borderRadius: BorderRadius.circular(18),
                               boxShadow: [
                                 BoxShadow(
-                                  color: s['color'].withOpacity(0.3),
+                                  color: (s['color'] as Color).withOpacity(0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -439,7 +644,7 @@ class _HomeViewState extends State<HomeView> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  s['section'],
+                                  '${s['section']}',
                                   style: GoogleFonts.inter(
                                     color: Colors.white,
                                     fontSize: 13,
@@ -447,7 +652,7 @@ class _HomeViewState extends State<HomeView> {
                                   ),
                                 ),
                                 Text(
-                                  s['title'],
+                                  '${s['title']}',
                                   style: GoogleFonts.inter(
                                     color: Colors.white,
                                     fontSize: 18,
