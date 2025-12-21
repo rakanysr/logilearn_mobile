@@ -25,7 +25,7 @@ class _RegisterViewState extends State<RegisterView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Harap isi semua kolom!'),
-          backgroundColor: Colors.red, // Merah untuk error validasi
+          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -35,7 +35,6 @@ class _RegisterViewState extends State<RegisterView> {
       _isLoading = true;
     });
 
-    // Panggil service
     final result = await _authService.registerPelajar(
       nama: _namaController.text,
       username: _usernameController.text,
@@ -50,16 +49,13 @@ class _RegisterViewState extends State<RegisterView> {
 
     // Handle response
     if (result['success']) {
-      // ✅ Snackbar BIRU untuk berhasil
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Registrasi Berhasil! Silakan Login.'),
-          backgroundColor: Color(0xFF2977FF), // 🔵 Biru sesuai request
+          backgroundColor: Color(0xFF2977FF),
           duration: const Duration(seconds: 2),
         ),
       );
-
-      // ✅ Pindah ke halaman Login setelah 1 detik
       Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
           Navigator.pushReplacement(
@@ -69,11 +65,10 @@ class _RegisterViewState extends State<RegisterView> {
         }
       });
     } else {
-      // ❌ Snackbar MERAH untuk gagal
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message']),
-          backgroundColor: Colors.red, // 🔴 Merah untuk error
+          backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
       );
