@@ -328,8 +328,9 @@ class _QuizScreenState extends State<QuizScreen> {
       try {
         if (_currentAttemptId != null) {
           final apiService = ApiService();
-          final res = await apiService.getAttemptById(_currentAttemptId!);
-          print('Finish Quiz - Get Attempt Result: $res');
+          // Use submitAttempt to trigger definitive recalculation
+          final res = await apiService.submitAttempt(_currentAttemptId!);
+          print('Finish Quiz - Submit Attempt Result: $res');
 
           if (res['success']) {
             final data = res['data'];

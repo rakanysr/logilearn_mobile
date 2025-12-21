@@ -251,19 +251,15 @@ class ApiService {
   }
 
   /// Submit all answers at once (batch submission)
-  Future<Map<String, dynamic>> submitAttempt(
-    int levelId,
-    int pelajarId,
-    List<Map<String, dynamic>> answers,
-  ) async {
+  /// Finalize attempt (calculate total score on backend)
+  Future<Map<String, dynamic>> submitAttempt(int attemptId) async {
     final url = Uri.parse('$baseUrl/attempts/submit');
     try {
       final headers = await _getHeaders();
-      final body = jsonEncode({
-        'id_level': levelId,
-        'id_pelajar': pelajarId,
-        'answers': answers,
-      });
+      final body = jsonEncode({'id_attempt': attemptId});
+
+      print('Calling Finalize/Submit Attempt: $url');
+      print('Body: $body');
 
       final response = await http.post(url, headers: headers, body: body);
 
