@@ -5,6 +5,8 @@ class HeaderSection extends StatelessWidget {
   final String selectedTitle;
   final VoidCallback onNextSection;
   final double? score; // Add score parameter
+  final bool hasAttempt; // Whether this section has been attempted
+  final int sectionNumber; // Section number for color synchronization
 
   const HeaderSection({
     super.key,
@@ -12,7 +14,25 @@ class HeaderSection extends StatelessWidget {
     required this.selectedTitle,
     required this.onNextSection,
     this.score, // Optional score
+    required this.hasAttempt, // Required: indicates if section has attempt data
+    required this.sectionNumber, // Required: section number for color
   });
+
+  // Get section color based on section number (synchronized with dropdown)
+  Color _getSectionColor(int sectionNumber) {
+    // Same logic as dropdown_button.dart: (i % 3)
+    // Section 1: (1-1) % 3 = 0 -> Blue
+    // Section 2: (2-1) % 3 = 1 -> Light Blue
+    // Section 3: (3-1) % 3 = 2 -> Green
+    final index = (sectionNumber - 1) % 3;
+    if (index == 0) {
+      return const Color(0xFF2F80ED); // Blue for Section 1
+    } else if (index == 1) {
+      return const Color(0xFF2D9CDB); // Light Blue for Section 2
+    } else {
+      return const Color(0xFF27AE60); // Green for Section 3
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,13 +114,7 @@ class HeaderSection extends StatelessWidget {
                         width: 90,
                         height: 20,
                         decoration: BoxDecoration(
-                          color:
-                              (selectedTitle == 'LOGIKA SILOGISME'
-                                      ? const Color(0xFF32CD32)
-                                      : selectedTitle == 'LOGIKA PEMROGRAMAN'
-                                      ? const Color(0xFF50BFFF)
-                                      : const Color(0xFF1E5FD4))
-                                  .withOpacity(0.4),
+                          color: _getSectionColor(sectionNumber).withOpacity(0.4),
                           shape: BoxShape.rectangle,
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -112,20 +126,10 @@ class HeaderSection extends StatelessWidget {
                       height: 90,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: selectedTitle == 'LOGIKA SILOGISME'
-                            ? const Color(0xFF32CD32)
-                            : selectedTitle == 'LOGIKA PEMROGRAMAN'
-                            ? const Color(0xFF50BFFF)
-                            : const Color(0xFF2977FF),
+                        color: _getSectionColor(sectionNumber),
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                (selectedTitle == 'LOGIKA SILOGISME'
-                                        ? const Color(0xFF32CD32)
-                                        : selectedTitle == 'LOGIKA PEMROGRAMAN'
-                                        ? const Color(0xFF50BFFF)
-                                        : const Color(0xFF2977FF))
-                                    .withOpacity(0.3),
+                            color: _getSectionColor(sectionNumber).withOpacity(0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -133,11 +137,8 @@ class HeaderSection extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          score != null
+                          (score != null && score! > 0)
                               ? '${score!.toStringAsFixed(0)}%'
-                              : (selectedTitle == 'LOGIKA SILOGISME' ||
-                                    selectedTitle == 'LOGIKA PEMROGRAMAN')
-                              ? '-%'
                               : '0%',
                           style: const TextStyle(
                             fontSize: 26,
@@ -150,9 +151,8 @@ class HeaderSection extends StatelessWidget {
                   ],
                 ),
 
-                // Show message if LOGIKA SILOGISME or LOGIKA PEMROGRAMAN
-                if (selectedTitle == 'LOGIKA SILOGISME' ||
-                    selectedTitle == 'LOGIKA PEMROGRAMAN') ...[
+                // Show message only if section hasn't been attempted yet
+                if (!hasAttempt) ...[
                   const SizedBox(height: 12),
                   const Text(
                     'Anda Belum Sampai Section Ini',
