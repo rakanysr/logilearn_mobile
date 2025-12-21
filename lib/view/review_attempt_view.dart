@@ -40,6 +40,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
   List<Map<String, dynamic>> _soals = [];
   Map<String, dynamic>? _attemptData; // Store attempt data
   String? _errorMessage;
+  List<Map<String, dynamic>> _sectionsList = []; // Store sections list for navigation
   final _storage = const FlutterSecureStorage();
 
   @override
@@ -143,6 +144,10 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
               'sectionNumber': i + 1,
             });
           }
+          // Simpan sections list ke state untuk navigasi
+          setState(() {
+            _sectionsList = sectionsList;
+          });
         }
       } catch (e) {
         print('Error fetching sections: $e');
@@ -712,6 +717,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                 selectedSection: _selectedSection,
                 selectedTitle: _selectedTitle,
                 isDropdownOpen: _isDropdownOpen,
+                sectionNumber: _selectedSectionNumber,
                 onToggleDropdown: () {
                   setState(() {
                     _isDropdownOpen = !_isDropdownOpen;
@@ -743,6 +749,8 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                 score: _attemptData != null
                     ? (_attemptData!['skor'] as num?)?.toDouble()
                     : null,
+                hasAttempt: _attemptData != null,
+                sectionNumber: _selectedSectionNumber,
               ),
 
               const SizedBox(height: 32),
@@ -872,18 +880,67 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
     );
   }
 
-  void _nextSection() {
-    setState(() {
-      if (_selectedTitle == 'LOGIKA DASAR') {
-        _selectedSection = 'Section 2, Level 1';
-        _selectedTitle = 'LOGIKA PEMROGRAMAN';
-      } else if (_selectedTitle == 'LOGIKA PEMROGRAMAN') {
-        _selectedSection = 'Section 3, Level 1';
-        _selectedTitle = 'LOGIKA SILOGISME';
-      } else if (_selectedTitle == 'LOGIKA SILOGISME') {
-        _selectedSection = 'Section 1, Level 1';
-        _selectedTitle = 'LOGIKA DASAR';
+  void _nextSection() async {
+    // Gunakan _selectedSectionNumber untuk navigasi yang benar
+    if (_sectionsList.isEmpty) {
+      print('Sections list is empty, fetching sections...');
+      // Jika sections list kosong, ambil dari API terlebih dahulu
+      try {
+        final apiService = ApiService();
+        final sectionsResult = await apiService.getSections();
+        if (sectionsResult['success']) {
+          final sectionsResponse = sectionsResult['data'];
+          List<dynamic> sectionsData = [];
+
+          if (sectionsResponse is Map &&
+              sectionsResponse['payload'] is Map &&
+              sectionsResponse['payload']['datas'] is List) {
+            sectionsData = sectionsResponse['payload']['datas'];
+          } else if (sectionsResponse is List) {
+            sectionsData = sectionsResponse;
+          }
+
+          List<Map<String, dynamic>> tempSectionsList = [];
+          for (var i = 0; i < sectionsData.length; i++) {
+            final section = sectionsData[i] is Map<String, dynamic>
+                ? sectionsData[i]
+                : Map<String, dynamic>.from(sectionsData[i] as Map);
+            tempSectionsList.add({
+              'id': section['id'],
+              'nama': section['nama'] ?? '',
+              'slug': section['slug'] ?? 'section-${i + 1}',
+              'sectionNumber': i + 1,
+            });
+          }
+          setState(() {
+            _sectionsList = tempSectionsList;
+          });
+        } else {
+          print('Failed to fetch sections, cannot navigate');
+          return;
+        }
+      } catch (e) {
+        print('Error fetching sections for navigation: $e');
+        return;
       }
+    }
+
+    // Cari section berikutnya berdasarkan section number
+    final currentIndex = _selectedSectionNumber - 1;
+    final nextIndex = (currentIndex + 1) % _sectionsList.length;
+    final nextSection = _sectionsList[nextIndex];
+
+    setState(() {
+      _selectedSectionNumber = nextSection['sectionNumber'] as int;
+      _selectedSection = 'Section ${_selectedSectionNumber}, Level 1';
+      _selectedTitle = (nextSection['nama'] ?? 'LOGIKA').toUpperCase();
+      // Clear old data immediately when section changes
+      _attemptData = null;
+      _soals = [];
+      _errorMessage = null;
     });
+
+    // Reload data untuk section yang baru
+    _loadLevelData();
   }
 }

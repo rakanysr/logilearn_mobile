@@ -7,6 +7,7 @@ class SectionDropdownButton extends StatefulWidget {
   final bool isDropdownOpen;
   final VoidCallback onToggleDropdown;
   final Function(String, String, int) onSelectSection;
+  final int sectionNumber; // Section number for color synchronization
 
   const SectionDropdownButton({
     super.key,
@@ -15,6 +16,7 @@ class SectionDropdownButton extends StatefulWidget {
     required this.isDropdownOpen,
     required this.onToggleDropdown,
     required this.onSelectSection,
+    required this.sectionNumber, // Required: section number for color
   });
 
   @override
@@ -24,6 +26,22 @@ class SectionDropdownButton extends StatefulWidget {
 class _SectionDropdownButtonState extends State<SectionDropdownButton> {
   List<Map<String, dynamic>> _sections = [];
   bool _isLoading = true;
+
+  // Get section color based on section number (synchronized with header)
+  Color _getSectionColor(int sectionNumber) {
+    // Same logic as header_section.dart: (sectionNumber - 1) % 3
+    // Section 1: (1-1) % 3 = 0 -> Blue
+    // Section 2: (2-1) % 3 = 1 -> Light Blue
+    // Section 3: (3-1) % 3 = 2 -> Green
+    final index = (sectionNumber - 1) % 3;
+    if (index == 0) {
+      return const Color(0xFF2F80ED); // Blue for Section 1
+    } else if (index == 1) {
+      return const Color(0xFF2D9CDB); // Light Blue for Section 2
+    } else {
+      return const Color(0xFF27AE60); // Green for Section 3
+    }
+  }
 
   @override
   void initState() {
@@ -98,7 +116,7 @@ class _SectionDropdownButtonState extends State<SectionDropdownButton> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF2977FF),
+                color: _getSectionColor(widget.sectionNumber),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
