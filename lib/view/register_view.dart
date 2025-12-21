@@ -1,7 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'login_view.dart'; // Pastikan import ini benar sesuai struktur folder Anda
+import 'login_view.dart';
+import '../services/auth_service.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -11,22 +10,24 @@ class RegisterView extends StatefulWidget {
 }
 
 class _RegisterViewState extends State<RegisterView> {
-  // Controller untuk input teks
   final TextEditingController _namaController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   bool _isLoading = false;
 
-  // Fungsi untuk memproses registrasi
   Future<void> registerPelajar() async {
-    // Validasi sederhana di sisi aplikasi
+    // Validasi input
     if (_namaController.text.isEmpty ||
         _usernameController.text.isEmpty ||
         _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Harap isi semua kolom!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Harap isi semua kolom!'),
+          backgroundColor: Colors.red, // Merah untuk error validasi
+        ),
+      );
       return;
     }
 
@@ -34,60 +35,48 @@ class _RegisterViewState extends State<RegisterView> {
       _isLoading = true;
     });
 
-    // Ganti URL ini dengan IP Address laptop/komputer Anda.
-    // Jika menggunakan Android Emulator, gunakan '10.0.2.2'.
-    // Jika menggunakan device fisik, gunakan IP LAN (contoh: 192.168.1.x)
-    final url = Uri.parse('http://10.0.2.2:3030/api/auth/register-pelajar');
+    // Panggil service
+    final result = await _authService.registerPelajar(
+      nama: _namaController.text,
+      username: _usernameController.text,
+      password: _passwordController.text,
+    );
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'nama': _namaController.text,
-          'username': _usernameController.text,
-          'password': _passwordController.text,
-        }),
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    // Handle response
+    if (result['success']) {
+      // ✅ Snackbar BIRU untuk berhasil
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Registrasi Berhasil! Silakan Login.'),
+          backgroundColor: Color(0xFF2977FF), // 🔵 Biru sesuai request
+          duration: const Duration(seconds: 2),
+        ),
       );
 
-      final responseData = jsonDecode(response.body);
-
-      if (response.statusCode == 201) {
-        // Berhasil Register
+      // ✅ Pindah ke halaman Login setelah 1 detik
+      Future.delayed(const Duration(seconds: 1), () {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Registrasi Berhasil! Silakan Login.'),
-            ),
-          );
-          // Pindah ke halaman Login
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const LoginView()),
           );
         }
-      } else {
-        // Gagal (misal username sudah ada)
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(responseData['message'] ?? 'Registrasi Gagal'),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      });
+    } else {
+      // ❌ Snackbar MERAH untuk gagal
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']),
+          backgroundColor: Colors.red, // 🔴 Merah untuk error
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -108,8 +97,6 @@ class _RegisterViewState extends State<RegisterView> {
               const SizedBox(height: 10),
               const Text("Silakan lengkapi data diri Anda."),
               const SizedBox(height: 30),
-
-              // Input Nama
               TextField(
                 controller: _namaController,
                 decoration: const InputDecoration(
@@ -119,8 +106,6 @@ class _RegisterViewState extends State<RegisterView> {
                 ),
               ),
               const SizedBox(height: 15),
-
-              // Input Username
               TextField(
                 controller: _usernameController,
                 decoration: const InputDecoration(
@@ -130,8 +115,6 @@ class _RegisterViewState extends State<RegisterView> {
                 ),
               ),
               const SizedBox(height: 15),
-
-              // Input Password
               TextField(
                 controller: _passwordController,
                 obscureText: true,
@@ -142,16 +125,12 @@ class _RegisterViewState extends State<RegisterView> {
                 ),
               ),
               const SizedBox(height: 30),
-
-              // Tombol Daftar
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : registerPelajar,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue, // Sesuaikan warna tema Anda
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
@@ -160,7 +139,6 @@ class _RegisterViewState extends State<RegisterView> {
                         ),
                 ),
               ),
-
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

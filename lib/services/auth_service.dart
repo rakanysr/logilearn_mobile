@@ -44,6 +44,44 @@ class AuthService {
     return false;
   }
 
+  Future<Map<String, dynamic>> registerPelajar({
+    required String nama,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register-pelajar'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nama': nama,
+          'username': username,
+          'password': password,
+        }),
+      );
+
+      print('🔵 Status Code: ${response.statusCode}');
+      print('🔵 Response Body: ${response.body}');
+
+      final responseData = jsonDecode(response.body);
+
+      return {
+        'success': response.statusCode == 201,
+        'statusCode': response.statusCode,
+        'message': responseData['payload']?['message'] ?? 'Registrasi Gagal',
+        'data': responseData,
+      };
+    } catch (e) {
+      print('🔴 Error: $e');
+      return {
+        'success': false,
+        'statusCode': 0,
+        'message': 'Terjadi kesalahan: $e',
+        'data': null,
+      };
+    }
+  }
+
   Future<String?> getToken() async {
     return await _storage.read(key: "token");
   }
