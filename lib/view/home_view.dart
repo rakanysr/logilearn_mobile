@@ -134,12 +134,9 @@ class _HomeViewState extends State<HomeView> {
               imageAsset = 'assets/images/Mascot buntung.png';
 
             // Unlocked Level Logic
-            // Since backend doesn't return user progress yet, we unlock Section 1 (index 0) fully or partially
-            // For now, let's unlock Level 1 of Section 1 by default.
-            int unlocked = 0;
-            if (i == 0) {
-              unlocked = 1;
-            }
+            // Semua section bisa dikerjakan dari awal tanpa harus menyelesaikan section sebelumnya
+            // Setiap section di-unlock level 1 secara default
+            int unlocked = 1;
 
             // Levels parsing
             List<dynamic> levels = [];
@@ -195,10 +192,11 @@ class _HomeViewState extends State<HomeView> {
 
   void _useDefaultSections() {
     _sections = List.from(_defaultSections);
-    // Fix: Ensure first section has at least level 1 unlocked and add slug
+    // Semua section bisa dikerjakan dari awal - unlock level 1 untuk semua section
     for (var i = 0; i < _sections.length; i++) {
       final section = Map<String, dynamic>.from(_sections[i]);
-      if (i == 0 && (section['unlockedLevel'] as int) < 1) {
+      // Setiap section di-unlock level 1 secara default
+      if ((section['unlockedLevel'] as int) < 1) {
         section['unlockedLevel'] = 1;
       }
       section['slug'] = 'section-${i + 1}';
@@ -290,11 +288,13 @@ class _HomeViewState extends State<HomeView> {
 
     if (pelajarIdStr == null) {
       print('No pelajar ID found in storage');
-      // Default: unlock level 1 of first section
+      // Default: unlock level 1 untuk semua section
       if (_sections.isNotEmpty && mounted) {
         setState(() {
-          _sections[0]['unlockedLevel'] = 1;
-          _sections[0]['completedLevels'] = 0;
+          for (var i = 0; i < _sections.length; i++) {
+            _sections[i]['unlockedLevel'] = 1;
+            _sections[i]['completedLevels'] = 0;
+          }
         });
       }
       return;
@@ -391,8 +391,8 @@ class _HomeViewState extends State<HomeView> {
           continue;
         }
 
-        // Default: unlock level 1 for first section, 0 for others
-        int unlockedLevel = (i == 0) ? 1 : 0;
+        // Default: unlock level 1 untuk semua section (semua section bisa dikerjakan dari awal)
+        int unlockedLevel = 1;
         // Jumlah level yang sudah diselesaikan dengan score >= 75
         // Progress bar akan bertambah berdasarkan nilai ini
         int completedLevels = 0;
@@ -491,6 +491,17 @@ class _HomeViewState extends State<HomeView> {
         );
       }
 
+      // Pastikan semua section minimal level 1 terbuka (semua section bisa dikerjakan dari awal)
+      if (mounted) {
+        setState(() {
+          for (var i = 0; i < _sections.length; i++) {
+            if ((_sections[i]['unlockedLevel'] as int) < 1) {
+              _sections[i]['unlockedLevel'] = 1;
+            }
+          }
+        });
+      }
+
       // Print final summary
       print('========================================');
       print('FINAL UNLOCK STATUS:');
@@ -502,11 +513,13 @@ class _HomeViewState extends State<HomeView> {
       print('========================================');
     } else {
       print('Failed to fetch attempts: ${result['message']}');
-      // If we can't fetch attempts, at least unlock level 1 of section 1
+      // If we can't fetch attempts, unlock level 1 untuk semua section
       if (_sections.isNotEmpty && mounted) {
         setState(() {
-          _sections[0]['unlockedLevel'] = 1;
-          _sections[0]['completedLevels'] = 0;
+          for (var i = 0; i < _sections.length; i++) {
+            _sections[i]['unlockedLevel'] = 1;
+            _sections[i]['completedLevels'] = 0;
+          }
         });
       }
     }
@@ -723,10 +736,7 @@ class _HomeViewState extends State<HomeView> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        IconButton(
-                          onPressed: _logout,
-                          icon: const Icon(Icons.logout, color: Colors.grey),
-                        ),
+                      
                       ],
                     ),
                   ),
@@ -1066,6 +1076,16 @@ class _HomeViewState extends State<HomeView> {
                             await _loadLevelsForSection(slugSection);
                             // Update progress for the selected section
                             await _updateUnlockedLevels();
+                            // Pastikan level 1 selalu terbuka untuk semua section
+                            if (mounted) {
+                              setState(() {
+                                for (var i = 0; i < _sections.length; i++) {
+                                  if ((_sections[i]['unlockedLevel'] as int) < 1) {
+                                    _sections[i]['unlockedLevel'] = 1;
+                                  }
+                                }
+                              });
+                            }
                           },
                           borderRadius: BorderRadius.circular(18),
                           child: Container(
