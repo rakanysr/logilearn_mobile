@@ -23,44 +23,61 @@ class _LoginViewState extends State<LoginView> {
   final _storage = const FlutterSecureStorage();
 
   void _handleLogin() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
+  final username = _usernameController.text.trim();
+  final password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Username dan password wajib diisi"),
-          backgroundColor: Colors.red,
-        )
-      );
-      return;
-    }
-
-    final success = await _authService.loginPelajar(username, password);
-
-    if (success) {
-      final nama = await _storage.read(key: "nama_pelajar");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Login berhasil, selamat datang ${nama}"),
-          backgroundColor: Color(0xFF2977FF),
-        )
-      );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeView())
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Username atau Password salah!"),
-          backgroundColor: Colors.red,
-        )
-      );
-    }
-
+  if (username.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Username dan password wajib diisi"),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
   }
+
+  final result = await _authService.loginPelajar(username, password);
+
+  if (result['statusCode'] == 200) {
+    final nama = await _storage.read(key: "nama_pelajar");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("${result['message']}, selamat datang ${nama}"),
+        backgroundColor: const Color(0xFF2977FF),
+      ),
+    );
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeView()),
+    );
+  } 
+  else if (result['statusCode'] == 401) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Password salah"),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } 
+  else if (result['statusCode'] == 404) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Pelajar tidak ditemukan"),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } 
+  else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message'] ?? "Terjadi kesalahan"),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+
 
   @override
   void dispose() {
