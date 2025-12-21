@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:logilearn/services/api_service.dart';
 
-class SectionDropdownButton extends StatelessWidget {
+class SectionDropdownButton extends StatefulWidget {
   final String selectedSection;
   final String selectedTitle;
   final bool isDropdownOpen;
@@ -17,13 +18,82 @@ class SectionDropdownButton extends StatelessWidget {
   });
 
   @override
+  State<SectionDropdownButton> createState() => _SectionDropdownButtonState();
+}
+
+class _SectionDropdownButtonState extends State<SectionDropdownButton> {
+  List<Map<String, dynamic>> _sections = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSections();
+  }
+
+  Future<void> _fetchSections() async {
+    final apiService = ApiService();
+    final result = await apiService.getSections();
+
+    if (result['success']) {
+      final fullResponse = result['data'];
+      List<dynamic> sectionsList = [];
+
+      if (fullResponse is Map &&
+          fullResponse['payload'] is Map &&
+          fullResponse['payload']['datas'] is List) {
+        sectionsList = fullResponse['payload']['datas'];
+      } else if (fullResponse is List) {
+        sectionsList = fullResponse;
+      }
+
+      if (sectionsList.isNotEmpty) {
+        final List<Map<String, dynamic>> parsedSections = [];
+
+        for (var i = 0; i < sectionsList.length; i++) {
+          final item = sectionsList[i];
+
+          Color sectionColor;
+          if (i % 3 == 0)
+            sectionColor = const Color(0xFF2F80ED);
+          else if (i % 3 == 1)
+            sectionColor = const Color(0xFF2D9CDB);
+          else
+            sectionColor = const Color(0xFF27AE60);
+
+          parsedSections.add({
+            'section': 'SECTION ${i + 1}',
+            'title': item['nama'] ?? 'LOGIKA',
+            'color': sectionColor,
+            'slug': item['slug'] ?? 'section-${i + 1}',
+            'id': item['id'],
+          });
+        }
+
+        if (mounted) {
+          setState(() {
+            _sections = parsedSections;
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Column(
         children: [
           GestureDetector(
-            onTap: onToggleDropdown,
+            onTap: widget.onToggleDropdown,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -44,7 +114,7 @@ class SectionDropdownButton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        selectedSection.toUpperCase(),
+                        widget.selectedSection.toUpperCase(),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.9),
                           fontSize: 14,
@@ -54,7 +124,7 @@ class SectionDropdownButton extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        selectedTitle,
+                        widget.selectedTitle,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -73,7 +143,7 @@ class SectionDropdownButton extends StatelessWidget {
                   ),
                   // Chevron icon
                   Icon(
-                    isDropdownOpen
+                    widget.isDropdownOpen
                         ? Icons.keyboard_arrow_up
                         : Icons.keyboard_arrow_down,
                     color: Colors.white,
@@ -85,7 +155,7 @@ class SectionDropdownButton extends StatelessWidget {
           ),
 
           // Dropdown Menu
-          if (isDropdownOpen) ...[
+          if (widget.isDropdownOpen) ...[
             const SizedBox(height: 8),
             Material(
               elevation: 24,
@@ -104,45 +174,38 @@ class SectionDropdownButton extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    _DropdownItem(
-                      section: 'SECTION 1',
-                      title: 'LOGIKA DASAR',
-                      color: const Color(0xFF2977FF),
-                      sectionNumber: 1,
-                      onTap: () => onSelectSection(
-                        'Section 1, Level 1',
-                        'LOGIKA DASAR',
-                        1,
+                child: _isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        ),
+                      )
+                    : Column(
+                        children: _sections.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final section = entry.value;
+
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: index == _sections.length - 1 ? 0 : 12,
+                            ),
+                            child: _DropdownItem(
+                              section:
+                                  section['section'] ?? 'SECTION ${index + 1}',
+                              title: section['title'] ?? 'LOGIKA',
+                              color:
+                                  section['color'] ?? const Color(0xFF2977FF),
+                              sectionNumber: index + 1,
+                              onTap: () => widget.onSelectSection(
+                                'Section ${index + 1}, Level 1',
+                                section['title'] ?? 'LOGIKA',
+                                index + 1,
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _DropdownItem(
-                      section: 'SECTION 2',
-                      title: 'LOGIKA PEMROGRAMAN',
-                      color: const Color(0xFF50BFFF),
-                      sectionNumber: 2,
-                      onTap: () => onSelectSection(
-                        'Section 2, Level 1',
-                        'LOGIKA PEMROGRAMAN',
-                        2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _DropdownItem(
-                      section: 'SECTION 3',
-                      title: 'LOGIKA SILOGISME',
-                      color: const Color(0xFF32CD32),
-                      sectionNumber: 3,
-                      onTap: () => onSelectSection(
-                        'Section 3, Level 1',
-                        'LOGIKA SILOGISME',
-                        3,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ],

@@ -63,6 +63,16 @@ class _HomeViewState extends State<HomeView> {
     _fetchSections();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh unlock status when returning to this screen
+    if (_sections.isNotEmpty) {
+      print('HomeView: didChangeDependencies - refreshing unlock status');
+      _updateUnlockedLevels();
+    }
+  }
+
   Future<void> _loadUserData() async {
     final name = await _storage.read(key: 'nama_pelajar');
     if (mounted) {
@@ -153,12 +163,13 @@ class _HomeViewState extends State<HomeView> {
           }
 
           _sections = parsedSections;
-          
-          // Load levels for the first section
+
+          // Load levels for the first section and unlock based on attempts
           if (_sections.isNotEmpty) {
             final firstSection = _sections[0];
             final slugSection = firstSection['slug'] as String? ?? 'section-1';
-            _loadLevelsForSection(slugSection);
+            await _loadLevelsForSection(slugSection);
+            await _updateUnlockedLevels(); // Update unlock status based on attempts
           }
         } catch (e) {
           print("Error parsing sections: $e");
@@ -190,7 +201,7 @@ class _HomeViewState extends State<HomeView> {
       section['id'] = i + 1;
       _sections[i] = section;
     }
-    
+
     // Load levels for the first section
     if (_sections.isNotEmpty) {
       final firstSection = _sections[0];
@@ -239,21 +250,22 @@ class _HomeViewState extends State<HomeView> {
       if (mounted) {
         setState(() {
           _levels = levelsList.map<Map<String, dynamic>>((level) {
-            final levelMap = level is Map<String, dynamic> 
-                ? level 
-                : (level is Map ? Map<String, dynamic>.from(level) : <String, dynamic>{});
-            return {
-              'id': levelMap['id'],
-              'nama': levelMap['nama'] ?? 'Level',
-            };
+            final levelMap = level is Map<String, dynamic>
+                ? level
+                : (level is Map
+                      ? Map<String, dynamic>.from(level)
+                      : <String, dynamic>{});
+            return {'id': levelMap['id'], 'nama': levelMap['nama'] ?? 'Level'};
           }).toList();
-          
+
           // Sort levels by id to ensure consistent ordering
           _levels.sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
-          
+
           print('Loaded ${_levels.length} levels into state:');
           for (var i = 0; i < _levels.length; i++) {
-            print('  Index $i: id=${_levels[i]['id']}, nama=${_levels[i]['nama']}');
+            print(
+              '  Index $i: id=${_levels[i]['id']}, nama=${_levels[i]['nama']}',
+            );
           }
         });
       }
@@ -262,18 +274,211 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
+  Future<void> _updateUnlockedLevels() async {
+    print('========================================');
+    print('_updateUnlockedLevels called');
+    final apiService = ApiService();
+
+    // Get pelajar ID from storage
+    final pelajarIdStr = await _storage.read(key: 'id_pelajar');
+    print('Pelajar ID from storage: $pelajarIdStr');
+
+    if (pelajarIdStr == null) {
+      print('No pelajar ID found in storage');
+      // Default: unlock level 1 of first section
+      if (_sections.isNotEmpty && mounted) {
+        setState(() {
+          _sections[0]['unlockedLevel'] = 1;
+        });
+      }
+      return;
+    }
+
+    final pelajarId = int.tryParse(pelajarIdStr);
+    if (pelajarId == null) {
+      print('Invalid pelajar ID: $pelajarIdStr');
+      return;
+    }
+
+    print('Fetching attempts for pelajar ID: $pelajarId');
+
+    // Get user's attempts to determine progress
+    final result = await apiService.getAttemptsByPelajarId(pelajarId);
+
+    if (result['success']) {
+      final fullResponse = result['data'];
+      List<dynamic> attemptsList = [];
+
+      // Parse response structure: { payload: { datas: [...] } }
+      if (fullResponse is Map &&
+          fullResponse['payload'] is Map &&
+          fullResponse['payload']['datas'] is List) {
+        attemptsList = fullResponse['payload']['datas'];
+      } else if (fullResponse is List) {
+        attemptsList = fullResponse;
+      }
+
+      print('Found ${attemptsList.length} attempts');
+
+      // Create a map to track the highest completed level for each section
+      Map<int, int> sectionMaxLevels = {};
+
+      // Process all attempts to find the highest level completed per section
+      for (var attempt in attemptsList) {
+        try {
+          // Structure: attempt['levels']['sections']['id'] = section ID
+          // Structure: attempt['levels']['id'] = level ID
+          if (attempt['levels'] != null &&
+              attempt['levels']['sections'] != null) {
+            final sectionId = attempt['levels']['sections']['id'] as int;
+            final levelId = attempt['levels']['id'] as int;
+
+            print('Attempt: sectionId=$sectionId, levelId=$levelId');
+
+            // Track the highest level ID for this section
+            if (!sectionMaxLevels.containsKey(sectionId) ||
+                levelId > sectionMaxLevels[sectionId]!) {
+              sectionMaxLevels[sectionId] = levelId;
+            }
+          }
+        } catch (e) {
+          print('Error processing attempt: $e');
+        }
+      }
+
+      print('Section max levels: $sectionMaxLevels');
+
+      // Now update each section's unlocked level
+      for (var i = 0; i < _sections.length; i++) {
+        final section = _sections[i];
+        final sectionId = section['id'] as int?;
+        final sectionSlug = section['slug'] as String?;
+
+        if (sectionId == null || sectionSlug == null) {
+          print('Section $i has no ID or slug, skipping');
+          continue;
+        }
+
+        // Default: unlock level 1 for first section, 0 for others
+        int unlockedLevel = (i == 0) ? 1 : 0;
+
+        // If this section has completed attempts, unlock the next level
+        if (sectionMaxLevels.containsKey(sectionId)) {
+          // User has completed at least one level in this section
+          final maxCompletedLevelId = sectionMaxLevels[sectionId]!;
+
+          // Fetch levels for THIS specific section to find the level index
+          final levelsResult = await apiService.getLevelsBySection(sectionSlug);
+
+          if (levelsResult['success']) {
+            final levelsResponse = levelsResult['data'];
+            List<dynamic> sectionLevelsList = [];
+
+            // Parse levels response
+            if (levelsResponse is Map &&
+                levelsResponse['payload'] is Map &&
+                levelsResponse['payload']['datas'] is List) {
+              sectionLevelsList = levelsResponse['payload']['datas'];
+            } else if (levelsResponse is List) {
+              sectionLevelsList = levelsResponse;
+            }
+
+            // Sort levels by ID to ensure correct ordering
+            sectionLevelsList.sort((a, b) {
+              final aId = a['id'] is int ? a['id'] as int : 0;
+              final bId = b['id'] is int ? b['id'] as int : 0;
+              return aId.compareTo(bId);
+            });
+
+            print(
+              'Section $sectionId ($sectionSlug) has ${sectionLevelsList.length} levels',
+            );
+
+            // Find the index of the highest completed level
+            int completedLevelIndex = -1;
+            for (var j = 0; j < sectionLevelsList.length; j++) {
+              final levelId = sectionLevelsList[j]['id'] as int;
+              if (levelId == maxCompletedLevelId) {
+                completedLevelIndex = j;
+                print('  Completed level at index $j (id=$levelId)');
+                break;
+              }
+            }
+
+            if (completedLevelIndex != -1) {
+              // Unlock the next level after the completed one
+              // Level numbers are 1-based, index is 0-based
+              // If user completed index 0 (level 1), unlock index 1 (level 2)
+              unlockedLevel = completedLevelIndex + 2;
+
+              // Don't unlock more than total levels
+              if (unlockedLevel > sectionLevelsList.length) {
+                unlockedLevel = sectionLevelsList.length;
+              }
+
+              print(
+                'Section $sectionId: completed index $completedLevelIndex, unlocking level $unlockedLevel',
+              );
+            } else {
+              // Completed level not found in list? Unlock level 1
+              unlockedLevel = 1;
+              print(
+                'Section $sectionId: completed level not found in list, unlocking level 1',
+              );
+            }
+          } else {
+            // Failed to fetch levels, but has attempts - unlock level 1
+            unlockedLevel = 1;
+            print(
+              'Section $sectionId: failed to fetch levels, unlocking level 1',
+            );
+          }
+        }
+
+        // Update the section's unlocked level
+        if (mounted) {
+          setState(() {
+            _sections[i]['unlockedLevel'] = unlockedLevel;
+          });
+        }
+
+        print(
+          'Section ${i + 1} (id=$sectionId): unlocked up to level $unlockedLevel',
+        );
+      }
+
+      // Print final summary
+      print('========================================');
+      print('FINAL UNLOCK STATUS:');
+      for (var i = 0; i < _sections.length; i++) {
+        print(
+          '  Section ${i + 1}: ${_sections[i]['title']} - Unlocked Level: ${_sections[i]['unlockedLevel']}',
+        );
+      }
+      print('========================================');
+    } else {
+      print('Failed to fetch attempts: ${result['message']}');
+      // If we can't fetch attempts, at least unlock level 1 of section 1
+      if (_sections.isNotEmpty && mounted) {
+        setState(() {
+          _sections[0]['unlockedLevel'] = 1;
+        });
+      }
+    }
+  }
+
   void _navigateToLevelDetail(int levelIndex) async {
     if (_sections.isEmpty || _selectedSectionIndex >= _sections.length) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Section tidak ditemukan'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Section tidak ditemukan')));
       return;
     }
 
     final selectedSection = _sections[_selectedSectionIndex];
-    final slugSection = selectedSection['slug'] as String? ?? 'section-${_selectedSectionIndex + 1}';
+    final slugSection =
+        selectedSection['slug'] as String? ??
+        'section-${_selectedSectionIndex + 1}';
 
     print('_navigateToLevelDetail called:');
     print('  levelIndex: $levelIndex');
@@ -290,7 +495,9 @@ class _HomeViewState extends State<HomeView> {
     if (levelIndex >= _levels.length || _levels.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Level tidak ditemukan. Total levels: ${_levels.length}'),
+          content: Text(
+            'Level tidak ditemukan. Total levels: ${_levels.length}',
+          ),
         ),
       );
       return;
@@ -298,8 +505,8 @@ class _HomeViewState extends State<HomeView> {
 
     final level = _levels[levelIndex];
     // Ensure levelId is int
-    final levelId = level['id'] is int 
-        ? level['id'] as int 
+    final levelId = level['id'] is int
+        ? level['id'] as int
         : int.tryParse(level['id'].toString()) ?? 0;
     final sectionTitle = selectedSection['title'] as String;
     final sectionNumber = _selectedSectionIndex + 1;
@@ -312,11 +519,9 @@ class _HomeViewState extends State<HomeView> {
     print('  levelNumber: ${levelIndex + 1}');
 
     if (levelId == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ID Level tidak valid'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ID Level tidak valid')));
       return;
     }
 
@@ -332,7 +537,11 @@ class _HomeViewState extends State<HomeView> {
           levelNumber: levelIndex + 1,
         ),
       ),
-    );
+    ).then((_) {
+      // Refresh unlock status when returning from quiz
+      print('Returned from quiz - refreshing unlock status');
+      _updateUnlockedLevels();
+    });
   }
 
   void _showLockedPopup() {
@@ -631,7 +840,8 @@ class _HomeViewState extends State<HomeView> {
                                 scores = selected['levelScores'];
                               }
 
-                              final Color sectionColor = selected['color'] as Color;
+                              final Color sectionColor =
+                                  selected['color'] as Color;
 
                               final dx = (index % 4 == 0)
                                   ? -screenWidth * 0.2
@@ -653,101 +863,111 @@ class _HomeViewState extends State<HomeView> {
                                         _showLockedPopup();
                                       }
                                     },
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Container(
-                                        width: 88,
-                                        height: 88,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isUnlocked
-                                              ? sectionColor
-                                              : Colors.grey[300],
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color:
-                                                  (isUnlocked
-                                                          ? sectionColor
-                                                          : Colors.grey[300])!
-                                                      .withOpacity(0.3),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 6),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Stack(
+                                          alignment: Alignment.center,
                                           children: [
-                                            Text(
-                                              '${index + 1}',
-                                              style: GoogleFonts.inter(
+                                            Container(
+                                              width: 88,
+                                              height: 88,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
                                                 color: isUnlocked
-                                                    ? Colors.white
-                                                    : Colors.grey[600],
-                                                fontSize: 26,
-                                                fontWeight: FontWeight.bold,
+                                                    ? sectionColor
+                                                    : Colors.grey[300],
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color:
+                                                        (isUnlocked
+                                                                ? sectionColor
+                                                                : Colors
+                                                                      .grey[300])!
+                                                            .withOpacity(0.3),
+                                                    blurRadius: 10,
+                                                    offset: const Offset(0, 6),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    '${index + 1}',
+                                                    style: GoogleFonts.inter(
+                                                      color: isUnlocked
+                                                          ? Colors.white
+                                                          : Colors.grey[600],
+                                                      fontSize: 26,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  if (isUnlocked &&
+                                                      index < scores.length)
+                                                    Text(
+                                                      '${scores[index]}%',
+                                                      style: GoogleFonts.inter(
+                                                        color: Colors.white,
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
                                             ),
+                                            if (!isUnlocked)
+                                              const Positioned(
+                                                right: 0,
+                                                top: 0,
+                                                child: Icon(
+                                                  Icons.lock,
+                                                  color: Colors.grey,
+                                                  size: 26,
+                                                ),
+                                              ),
                                             if (isUnlocked &&
                                                 index < scores.length)
-                                              Text(
-                                                '${scores[index]}%',
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.white,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
+                                              Positioned(
+                                                right: 0,
+                                                top: 0,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    5,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    shape: BoxShape.circle,
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: sectionColor
+                                                            .withOpacity(0.3),
+                                                        blurRadius: 4,
+                                                        offset: const Offset(
+                                                          0,
+                                                          2,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.check_circle,
+                                                    color: sectionColor,
+                                                    size: 22,
+                                                  ),
                                                 ),
                                               ),
                                           ],
                                         ),
-                                      ),
-                                      if (!isUnlocked)
-                                        const Positioned(
-                                          right: 0,
-                                          top: 0,
-                                          child: Icon(
-                                            Icons.lock,
-                                            color: Colors.grey,
-                                            size: 26,
-                                          ),
-                                        ),
-                                      if (isUnlocked && index < scores.length)
-                                        Positioned(
-                                          right: 0,
-                                          top: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(5),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: sectionColor
-                                                      .withOpacity(0.3),
-                                                  blurRadius: 4,
-                                                  offset: const Offset(0, 2),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Icon(
-                                              Icons.check_circle,
-                                              color: sectionColor,
-                                              size: 22,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
+                                ),
+                              );
                             }),
                           ),
                   ),
@@ -780,7 +1000,9 @@ class _HomeViewState extends State<HomeView> {
                             });
                             // Load levels for selected section
                             final selectedSection = _sections[index];
-                            final slugSection = selectedSection['slug'] as String? ?? 'section-${index + 1}';
+                            final slugSection =
+                                selectedSection['slug'] as String? ??
+                                'section-${index + 1}';
                             _loadLevelsForSection(slugSection);
                           },
                           borderRadius: BorderRadius.circular(18),

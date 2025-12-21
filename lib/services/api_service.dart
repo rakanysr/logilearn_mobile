@@ -325,4 +325,33 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+
+  /// Get all attempts for a specific student (pelajar)
+  Future<Map<String, dynamic>> getAttemptsByPelajarId(int pelajarId) async {
+    final url = Uri.parse('$baseUrl/attempts/pelajar/$pelajarId');
+
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      print("ini id nya" + pelajarId.toString());
+      print('=== GET ATTEMPTS BY PELAJAR DEBUG ===');
+      print('URL: $url');
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+      print('=== END DEBUG ===');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to fetch attempts for pelajar',
+        };
+      }
+    } catch (e) {
+      print('Exception in getAttemptsByPelajarId: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
 }

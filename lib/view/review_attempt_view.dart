@@ -7,6 +7,7 @@ import 'package:logilearn/view/widgetAttempt/header_section.dart';
 import 'package:logilearn/view/widgetAttempt/question_card.dart';
 import 'package:logilearn/view/widgetAttempt/question_card_with_feedback.dart';
 import 'package:logilearn/widget/bottombar.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ReviewAttemptView extends StatefulWidget {
   final String sectionSlug;
@@ -35,7 +36,9 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
   int _currentBottomNavIndex = 1;
   bool _isLoading = true;
   List<Map<String, dynamic>> _soals = [];
+  Map<String, dynamic>? _attemptData; // Store attempt data
   String? _errorMessage;
+  final _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
@@ -54,132 +57,180 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
 
     try {
       final apiService = ApiService();
-      print('=== Loading soals data ===');
-      print('  sectionSlug: ${widget.sectionSlug}');
-      print('  levelId: ${widget.levelId}');
-      print(
-        '  Full URL will be: ${ApiService.baseUrl}/${widget.sectionSlug}/levels/${widget.levelId}/soal',
-      );
 
-      // Use new endpoint to get soals directly
-      final result = await apiService.getSoalsByLevel(
-        widget.sectionSlug,
-        widget.levelId,
-      );
-
-      print('API Response success: ${result['success']}');
-      print('API Response data keys: ${result['data']?.keys}');
-
-      if (result['success']) {
-        final fullResponse = result['data'];
-        List<dynamic> soalsList = [];
-
-        // Parse response structure from helpers/response.js
-        // Structure: { payload: { datas: [...] } }
-        if (fullResponse is Map && fullResponse['payload'] is Map) {
-          final payload = fullResponse['payload'] as Map;
-
-          if (payload['datas'] is List) {
-            soalsList = payload['datas'] as List;
-            print(
-              'Parsed soals from payload.datas (array): ${soalsList.length}',
-            );
-          } else if (payload['datas'] is Map) {
-            // If single object, wrap in array
-            soalsList = [payload['datas']];
-            print('Parsed soals from payload.datas (object, wrapped in array)');
-          }
-        } else if (fullResponse is Map && fullResponse['datas'] is List) {
-          soalsList = fullResponse['datas'] as List;
-          print('Parsed soals from datas (array): ${soalsList.length}');
-        } else if (fullResponse is List) {
-          soalsList = fullResponse;
-          print('Parsed soals from direct list: ${soalsList.length}');
-        }
-
-        print('Found ${soalsList.length} soals');
-
-        if (soalsList.isNotEmpty) {
-          setState(() {
-            _soals = soalsList.map<Map<String, dynamic>>((soal) {
-              final soalMap = soal is Map<String, dynamic>
-                  ? soal
-                  : (soal is Map
-                        ? Map<String, dynamic>.from(soal)
-                        : <String, dynamic>{});
-
-              // Parse opsis with correct field names from backend
-              // Backend uses: text_opsi, is_correct
-              List<dynamic> opsisList = [];
-              if (soalMap['opsis'] is List) {
-                opsisList = (soalMap['opsis'] as List).map((opsi) {
-                  final opsiMap = opsi is Map<String, dynamic>
-                      ? opsi
-                      : (opsi is Map
-                            ? Map<String, dynamic>.from(opsi)
-                            : <String, dynamic>{});
-                  // Map backend field names to our internal format
-                  return {
-                    'id': opsiMap['id'],
-                    'text':
-                        opsiMap['text_opsi'] ??
-                        opsiMap['text'] ??
-                        '', // Backend uses text_opsi
-                    'text_opsi':
-                        opsiMap['text_opsi'] ??
-                        opsiMap['text'] ??
-                        '', // Keep original for compatibility
-                    'is_benar':
-                        opsiMap['is_correct'] ??
-                        opsiMap['is_benar'] ??
-                        false, // Backend uses is_correct
-                    'is_correct':
-                        opsiMap['is_correct'] ??
-                        opsiMap['is_benar'] ??
-                        false, // Keep original for compatibility
-                  };
-                }).toList();
-                print(
-                  'Parsed ${opsisList.length} opsis for soal ${soalMap['id']}',
-                );
-              } else {
-                print(
-                  'No opsis found or opsis is not a List for soal ${soalMap['id']}',
-                );
-              }
-
-              return {
-                'id': soalMap['id'],
-                'text_soal': soalMap['text_soal'] ?? '',
-                'tipe': soalMap['tipe'] ?? 'pg',
-                'opsis': opsisList,
-                'kata_kunci':
-                    soalMap['kata_kunci'] ?? '', // For essay questions
-              };
-            }).toList();
-            _isLoading = false;
-          });
-          print('Soals loaded successfully: ${_soals.length}');
-        } else {
-          setState(() {
-            _errorMessage = 'Tidak ada soal ditemukan untuk level ini';
-            _isLoading = false;
-          });
-          print('No soals found in list');
-        }
-      } else {
+      // 1. Get student ID from secure storage
+      final pelajarIdStr = await _storage.read(key: 'id_pelajar');
+      if (pelajarIdStr == null) {
         setState(() {
-          _errorMessage = result['message'] ?? 'Gagal memuat soal dari server';
+          _errorMessage = 'ID Pelajar tidak ditemukan. Silakan login kembali.';
           _isLoading = false;
         });
-        print('API call failed: ${result['message']}');
+        return;
       }
-    } catch (e) {
+      final pelajarId = int.parse(pelajarIdStr);
+      print('=== Loading attempt data for pelajar: $pelajarId ===');
+
+      // 2. Fetch attempts for this student
+      final attemptsResult = await apiService.getAttemptsByPelajarId(pelajarId);
+
+      if (!attemptsResult['success']) {
+        setState(() {
+          _errorMessage =
+              attemptsResult['message'] ?? 'Gagal memuat data attempt';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // 3. Parse attempts and filter by current level
+      final attemptsResponse = attemptsResult['data'];
+      List<dynamic> attemptsList = [];
+
+      print('DEBUG: attemptsResponse type: ${attemptsResponse.runtimeType}');
+
+      if (attemptsResponse is Map && attemptsResponse['payload'] is Map) {
+        final payload = attemptsResponse['payload'] as Map;
+        print('DEBUG: payload keys: ${payload.keys.toList()}');
+        if (payload['datas'] is List) {
+          attemptsList = payload['datas'] as List;
+          print('DEBUG: Successfully parsed ${attemptsList.length} attempts');
+        } else {
+          print(
+            'ERROR: payload[\"datas\"] is not a List, type: ${payload['datas'].runtimeType}',
+          );
+        }
+      } else if (attemptsResponse is List) {
+        attemptsList = attemptsResponse;
+        print('DEBUG: Response is directly a List');
+      } else {
+        print('ERROR: Unexpected response type');
+      }
+
+      print('Found ${attemptsList.length} total attempts');
+
+      if (attemptsList.isEmpty) {
+        print('WARNING: No attempts found for this student');
+        setState(() {
+          _errorMessage =
+              'Belum ada attempt ditemukan.\n\nSilakan kerjakan quiz terlebih dahulu.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Get the most recent attempt (first one since backend orders by id desc)
+      // Don't filter by level - show whatever attempt is available
+      final attemptMap = attemptsList.first is Map<String, dynamic>
+          ? attemptsList.first
+          : Map<String, dynamic>.from(attemptsList.first as Map);
+
+      print(
+        'Using attempt ID: ${attemptMap['id']} for level: ${attemptMap['id_level']}',
+      );
+
+      // Show info if attempt is from different level
+      if (attemptMap['id_level'] != widget.levelId) {
+        print(
+          'INFO: Showing attempt from level ${attemptMap['id_level']} (current page is level ${widget.levelId})',
+        );
+      }
+
+      // 4. Extract soals from attempt answers instead of fetching separately
+      // This handles cases where attempt level doesn't match actual question levels
+      print('Extracting soals from attempt answers...');
+
+      try {
+        final jawabanPGs = attemptMap['jawaban_pgs'] as List? ?? [];
+        final jawabanEsais = attemptMap['jawaban_esais'] as List? ?? [];
+
+        print(
+          'Found ${jawabanPGs.length} PG answers and ${jawabanEsais.length} essay answers',
+        );
+
+        // Build soals list from answers
+        Map<int, Map<String, dynamic>> soalsMap = {};
+
+        // Extract from PG answers
+        for (var jawaban in jawabanPGs) {
+          if (jawaban['opsis'] != null && jawaban['opsis']['soals'] != null) {
+            final soal = jawaban['opsis']['soals'];
+            final soalId = soal['id'];
+
+            if (!soalsMap.containsKey(soalId)) {
+              // Get all opsis for this soal from the level data if available
+              // For now, we'll just mark the selected opsi
+              soalsMap[soalId] = {
+                'id': soalId,
+                'text_soal': soal['text_soal'] ?? '',
+                'tipe': soal['tipe'] ?? 'pg',
+                'opsis': [],
+                'kata_kunci': soal['kata_kunci'] ?? '',
+              };
+            }
+          }
+        }
+
+        // Extract from Essay answers
+        for (var jawaban in jawabanEsais) {
+          if (jawaban['soals'] != null) {
+            final soal = jawaban['soals'];
+            final soalId = soal['id'];
+
+            if (!soalsMap.containsKey(soalId)) {
+              soalsMap[soalId] = {
+                'id': soalId,
+                'text_soal': soal['text_soal'] ?? '',
+                'tipe': soal['tipe'] ?? 'esai',
+                'opsis': [],
+                'kata_kunci': soal['kata_kunci'] ?? '',
+              };
+            }
+          }
+        }
+
+        if (soalsMap.isNotEmpty) {
+          // Extract section info from attempt data
+          final levelData = attemptMap['levels'];
+          final sectionData = levelData?['sections'];
+
+          setState(() {
+            _attemptData = attemptMap;
+            _soals = soalsMap.values.toList();
+
+            // Update section title and number from attempt data
+            if (sectionData != null) {
+              final sectionId = sectionData['id'] ?? 1;
+              final sectionName = sectionData['nama'] ?? 'Unknown Section';
+              final levelName = levelData?['nama'] ?? 'Level 1';
+
+              _selectedSection = 'Section $sectionId, $levelName';
+              _selectedTitle = sectionName.toUpperCase();
+            }
+
+            _isLoading = false;
+          });
+          print('Extracted ${_soals.length} unique soals from attempt answers');
+          print('Section: $_selectedSection, Title: $_selectedTitle');
+        } else {
+          setState(() {
+            _errorMessage = 'Tidak ada soal ditemukan dalam attempt ini';
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        print('Error extracting soals from attempt: $e');
+        setState(() {
+          _errorMessage = 'Error memproses data attempt: ${e.toString()}';
+          _isLoading = false;
+        });
+      }
+    } catch (e, stackTrace) {
       setState(() {
         _errorMessage = 'Error: ${e.toString()}';
         _isLoading = false;
       });
       print('Exception in _loadLevelData: $e');
+      print('Stack trace: $stackTrace');
     }
   }
 
@@ -279,12 +330,15 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                 selectedSection: _selectedSection,
                 selectedTitle: _selectedTitle,
                 onNextSection: _nextSection,
+                score: _attemptData != null
+                    ? (_attemptData!['skor'] as num?)?.toDouble()
+                    : null,
               ),
 
               const SizedBox(height: 32),
 
-              // Display questions from backend
-              if (_soals.isNotEmpty)
+              // Display questions from backend with actual attempt data
+              if (_soals.isNotEmpty && _attemptData != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
@@ -294,74 +348,84 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                       final questionNumber = index + 1;
                       final tipe = soal['tipe'] as String? ?? 'pg';
                       final textSoal = soal['text_soal'] as String? ?? '';
-                      final opsis = soal['opsis'] as List? ?? [];
+                      final soalId = soal['id'];
 
-                      // For now, we'll show placeholder data since we don't have attempt data
-                      // In a real scenario, you would fetch attempt data separately
                       if (tipe == 'esai') {
+                        // Find essay answer from attempt data
+                        final jawabanEsais =
+                            _attemptData!['jawaban_esais'] as List? ?? [];
+                        final jawabanEsai = jawabanEsais.firstWhere(
+                          (j) => j['id_soal'] == soalId,
+                          orElse: () => null,
+                        );
+
+                        final score = jawabanEsai != null
+                            ? (jawabanEsai['skor'] ?? 0.0).toString()
+                            : '0';
+                        final isCorrect = jawabanEsai != null
+                            ? (jawabanEsai['skor'] ?? 0.0) >= 0.5
+                            : false;
+                        final answer = jawabanEsai != null
+                            ? (jawabanEsai['text_jawaban_esai'] ??
+                                  'Tidak ada jawaban')
+                            : 'Tidak ada jawaban';
+                        final feedback =
+                            jawabanEsai != null && jawabanEsai['admins'] != null
+                            ? 'Dinilai oleh: ${jawabanEsai['admins']['nama'] ?? 'Admin'}'
+                            : 'Dinilai otomatis oleh AI';
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: QuestionCardWithFeedback(
                             questionNumber: questionNumber,
-                            score:
-                                '0/1', // Placeholder - should come from attempt data
-                            isCorrect:
-                                false, // Placeholder - should come from attempt data
+                            score: '$score/1',
+                            isCorrect: isCorrect,
                             question: textSoal,
-                            answer:
-                                'Jawaban belum tersedia', // Placeholder - should come from attempt data
-                            feedback:
-                                'Feedback belum tersedia', // Placeholder - should come from attempt data
+                            answer: answer,
+                            feedback: feedback,
                           ),
                         );
                       } else {
-                        // Find the correct option text
-                        // Support both is_benar and is_correct, and both text and text_opsi
-                        String correctAnswerText = 'Jawaban belum tersedia';
-                        if (opsis.isNotEmpty) {
-                          try {
-                            final correctOption = opsis.firstWhere(
-                              (opsi) =>
-                                  (opsi['is_benar'] == true) ||
-                                  (opsi['is_correct'] == true),
-                            );
-                            if (correctOption != null) {
-                              correctAnswerText =
-                                  (correctOption['text'] ??
-                                          correctOption['text_opsi'] ??
-                                          'Jawaban belum tersedia')
-                                      .toString();
-                            }
-                          } catch (e) {
-                            // If no correct option found, try to find manually
-                            for (var opsi in opsis) {
-                              if ((opsi['is_benar'] == true) ||
-                                  (opsi['is_correct'] == true)) {
-                                correctAnswerText =
-                                    (opsi['text'] ??
-                                            opsi['text_opsi'] ??
-                                            'Jawaban belum tersedia')
-                                        .toString();
-                                break;
-                              }
+                        // Find PG answer from attempt data
+                        final jawabanPGs =
+                            _attemptData!['jawaban_pgs'] as List? ?? [];
+
+                        // Find the student's answer
+                        Map<String, dynamic>? studentAnswer;
+                        for (var jawaban in jawabanPGs) {
+                          final opsi = jawaban['opsis'];
+                          if (opsi != null && opsi['soals'] != null) {
+                            if (opsi['soals']['id'] == soalId) {
+                              studentAnswer = jawaban;
+                              break;
                             }
                           }
                         }
-                        if (correctAnswerText.isEmpty) {
-                          correctAnswerText = 'Jawaban belum tersedia';
+
+                        final score = studentAnswer != null
+                            ? (studentAnswer['skor'] ?? 0.0).toString()
+                            : '0';
+                        final isCorrect = studentAnswer != null
+                            ? (studentAnswer['skor'] ?? 0.0) >= 1.0
+                            : false;
+
+                        // Get the answer text
+                        String answerText = 'Tidak ada jawaban';
+                        if (studentAnswer != null &&
+                            studentAnswer['opsis'] != null) {
+                          answerText =
+                              studentAnswer['opsis']['text_opsi'] ??
+                              'Tidak ada jawaban';
                         }
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: QuestionCard(
                             questionNumber: questionNumber,
-                            score:
-                                '0/1', // Placeholder - should come from attempt data
-                            isCorrect:
-                                false, // Placeholder - should come from attempt data
+                            score: '$score/1',
+                            isCorrect: isCorrect,
                             question: textSoal,
-                            answer:
-                                correctAnswerText, // Placeholder - should come from attempt data
+                            answer: answerText,
                           ),
                         );
                       }
@@ -372,7 +436,9 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Tidak ada soal ditemukan untuk level ini',
+                    _attemptData == null
+                        ? 'Belum ada data attempt. Silakan kerjakan quiz terlebih dahulu.'
+                        : 'Tidak ada soal ditemukan untuk level ini',
                     style: GoogleFonts.inter(color: Colors.grey),
                   ),
                 ),

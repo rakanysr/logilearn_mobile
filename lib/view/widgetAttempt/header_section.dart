@@ -4,12 +4,14 @@ class HeaderSection extends StatelessWidget {
   final String selectedSection;
   final String selectedTitle;
   final VoidCallback onNextSection;
+  final double? score; // Add score parameter
 
   const HeaderSection({
     super.key,
     required this.selectedSection,
     required this.selectedTitle,
     required this.onNextSection,
+    this.score, // Optional score
   });
 
   @override
@@ -131,10 +133,12 @@ class HeaderSection extends StatelessWidget {
                       ),
                       child: Center(
                         child: Text(
-                          (selectedTitle == 'LOGIKA SILOGISME' ||
-                                  selectedTitle == 'LOGIKA PEMROGRAMAN')
+                          score != null
+                              ? '${score!.toStringAsFixed(0)}%'
+                              : (selectedTitle == 'LOGIKA SILOGISME' ||
+                                    selectedTitle == 'LOGIKA PEMROGRAMAN')
                               ? '-%'
-                              : '67%',
+                              : '0%',
                           style: const TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
