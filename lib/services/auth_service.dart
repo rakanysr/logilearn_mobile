@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class AuthService {
-  // Use 10.0.2.2 for Android Emulator, localhost for others
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:3030/api/auth';
     if (Platform.isAndroid) return 'http://10.0.2.2:3030/api/auth';
@@ -14,35 +13,57 @@ class AuthService {
 
   final _storage = const FlutterSecureStorage();
 
-  Future<bool> loginPelajar(String username, String password) async {
+Future<Map<String, dynamic>> loginPelajar(
+    String username, String password) async {
+  try {
     final response = await http.post(
       Uri.parse("$baseUrl/login-pelajar"),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"username": username, "password": password}),
+      body: jsonEncode({
+        "username": username,
+        "password": password,
+      }),
     );
 
-    if (response.statusCode == 200) {
-      final result = jsonDecode(response.body);
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
 
+    final responseData = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
       await _storage.write(
         key: "token",
-        value: result["payload"]["datas"]["token"],
+        value: responseData["payload"]["datas"]["token"],
       );
 
       await _storage.write(
         key: "id_pelajar",
-        value: result["payload"]["datas"]["pelajar"]["id"].toString(),
+        value: responseData["payload"]["datas"]["pelajar"]["id"].toString(),
       );
 
       await _storage.write(
         key: "nama_pelajar",
-        value: result["payload"]["datas"]["pelajar"]["nama"].toString(),
+        value: responseData["payload"]["datas"]["pelajar"]["nama"].toString(),
       );
-
-      return true;
     }
-    return false;
+
+    return {
+      'success': response.statusCode == 200,
+      'statusCode': response.statusCode,
+      'message': responseData['payload']?['message'] ?? 'Login gagal',
+      'data': responseData,
+    };
+  } catch (e) {
+    print('Error Login: $e');
+    return {
+      'success': false,
+      'statusCode': 0,
+      'message': 'Terjadi kesalahan: $e',
+      'data': null,
+    };
   }
+}
+
 
   Future<Map<String, dynamic>> registerPelajar({
     required String nama,
