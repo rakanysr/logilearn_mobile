@@ -33,6 +33,7 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF2F80ED),
       'image': 'assets/images/Mascot halo.png',
       'unlockedLevel': 0,
+      'completedLevels': 0, // Jumlah level yang sudah diselesaikan
       'levelScores': <int>[], // Explicit type
       'totalLevels': 10,
     },
@@ -42,6 +43,7 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF2D9CDB),
       'image': 'assets/images/Mascot banyak.png',
       'unlockedLevel': 0,
+      'completedLevels': 0, // Jumlah level yang sudah diselesaikan
       'levelScores': <int>[], // Explicit type
       'totalLevels': 10,
     },
@@ -51,6 +53,7 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF27AE60),
       'image': 'assets/images/Mascot buntung.png',
       'unlockedLevel': 0,
+      'completedLevels': 0, // Jumlah level yang sudah diselesaikan
       'levelScores': <int>[], // Explicit type
       'totalLevels': 10,
     },
@@ -155,6 +158,7 @@ class _HomeViewState extends State<HomeView> {
               'color': sectionColor,
               'image': imageAsset,
               'unlockedLevel': unlocked,
+              'completedLevels': 0, // Jumlah level yang sudah diselesaikan
               'levelScores': scores,
               'totalLevels': totalLev,
               'slug': item['slug'] ?? 'section-${i + 1}',
@@ -199,6 +203,7 @@ class _HomeViewState extends State<HomeView> {
       }
       section['slug'] = 'section-${i + 1}';
       section['id'] = i + 1;
+      section['completedLevels'] = 0; // Initialize completed levels
       _sections[i] = section;
     }
 
@@ -289,6 +294,7 @@ class _HomeViewState extends State<HomeView> {
       if (_sections.isNotEmpty && mounted) {
         setState(() {
           _sections[0]['unlockedLevel'] = 1;
+          _sections[0]['completedLevels'] = 0;
         });
       }
       return;
@@ -322,6 +328,8 @@ class _HomeViewState extends State<HomeView> {
 
       // Create a map to track the highest completed level for each section
       Map<int, int> sectionMaxLevels = {};
+      // Create a map to track completed level IDs per section (to count unique completed levels)
+      Map<int, Set<int>> sectionCompletedLevelIds = {};
 
       // Process all attempts to find the highest level completed per section
       for (var attempt in attemptsList) {
@@ -340,6 +348,12 @@ class _HomeViewState extends State<HomeView> {
                 levelId > sectionMaxLevels[sectionId]!) {
               sectionMaxLevels[sectionId] = levelId;
             }
+
+            // Track unique completed level IDs for progress calculation
+            if (!sectionCompletedLevelIds.containsKey(sectionId)) {
+              sectionCompletedLevelIds[sectionId] = <int>{};
+            }
+            sectionCompletedLevelIds[sectionId]!.add(levelId);
           }
         } catch (e) {
           print('Error processing attempt: $e');
@@ -347,6 +361,7 @@ class _HomeViewState extends State<HomeView> {
       }
 
       print('Section max levels: $sectionMaxLevels');
+      print('Section completed level IDs: $sectionCompletedLevelIds');
 
       // Now update each section's unlocked level
       for (var i = 0; i < _sections.length; i++) {
@@ -361,9 +376,15 @@ class _HomeViewState extends State<HomeView> {
 
         // Default: unlock level 1 for first section, 0 for others
         int unlockedLevel = (i == 0) ? 1 : 0;
+        int completedLevels = 0; // Jumlah level yang sudah diselesaikan
 
         // If this section has completed attempts, unlock the next level
         if (sectionMaxLevels.containsKey(sectionId)) {
+          // Calculate completed levels count
+          if (sectionCompletedLevelIds.containsKey(sectionId)) {
+            completedLevels = sectionCompletedLevelIds[sectionId]!.length;
+            print('Section $sectionId: completed $completedLevels levels');
+          }
           // User has completed at least one level in this section
           final maxCompletedLevelId = sectionMaxLevels[sectionId]!;
 
@@ -435,15 +456,16 @@ class _HomeViewState extends State<HomeView> {
           }
         }
 
-        // Update the section's unlocked level
+        // Update the section's unlocked level and completed levels
         if (mounted) {
           setState(() {
             _sections[i]['unlockedLevel'] = unlockedLevel;
+            _sections[i]['completedLevels'] = completedLevels;
           });
         }
 
         print(
-          'Section ${i + 1} (id=$sectionId): unlocked up to level $unlockedLevel',
+          'Section ${i + 1} (id=$sectionId): unlocked up to level $unlockedLevel, completed $completedLevels levels',
         );
       }
 
@@ -462,6 +484,7 @@ class _HomeViewState extends State<HomeView> {
       if (_sections.isNotEmpty && mounted) {
         setState(() {
           _sections[0]['unlockedLevel'] = 1;
+          _sections[0]['completedLevels'] = 0;
         });
       }
     }
@@ -623,13 +646,20 @@ class _HomeViewState extends State<HomeView> {
       unlocked = selected['unlockedLevel'];
     }
 
+    // Get completed levels count
+    int completed = 0;
+    if (selected['completedLevels'] is int) {
+      completed = selected['completedLevels'];
+    }
+
     // Use actual levels count from backend, or fallback to totalLevels
     int total = _levels.isNotEmpty ? _levels.length : 10;
     if (selected['totalLevels'] is int && _levels.isEmpty) {
       total = selected['totalLevels'];
     }
 
-    double sectionProgress = total > 0 ? unlocked / total : 0.0;
+    // Progress dihitung berdasarkan level yang sudah diselesaikan, bukan unlocked
+    double sectionProgress = total > 0 ? completed / total : 0.0;
     int percentageDisplay = (sectionProgress * 100).toInt();
 
     return Scaffold(
@@ -992,7 +1022,7 @@ class _HomeViewState extends State<HomeView> {
                           bottom: index == _sections.length - 1 ? 0 : 8.0,
                         ),
                         child: InkWell(
-                          onTap: () {
+                          onTap: () async {
                             setState(() {
                               _selectedSectionIndex = index;
                               _isDropdownOpen = false;
@@ -1003,7 +1033,9 @@ class _HomeViewState extends State<HomeView> {
                             final slugSection =
                                 selectedSection['slug'] as String? ??
                                 'section-${index + 1}';
-                            _loadLevelsForSection(slugSection);
+                            await _loadLevelsForSection(slugSection);
+                            // Update progress for the selected section
+                            await _updateUnlockedLevels();
                           },
                           borderRadius: BorderRadius.circular(18),
                           child: Container(
