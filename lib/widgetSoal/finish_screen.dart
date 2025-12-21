@@ -10,7 +10,7 @@ class FinishScreen extends StatelessWidget {
   final String? sectionTitle;
   final int? sectionNumber;
   final int? levelNumber;
-  
+
   const FinishScreen({
     super.key,
     required this.score,
@@ -20,11 +20,14 @@ class FinishScreen extends StatelessWidget {
     this.sectionTitle,
     this.sectionNumber,
     this.levelNumber,
+    this.finalPercentage,
   });
+
+  final double? finalPercentage;
 
   @override
   Widget build(BuildContext context) {
-    double percentage = (score / totalQuestions) * 100;
+    double percentage = finalPercentage ?? (score / totalQuestions) * 100;
     String imagePath;
     String title;
     String message;
@@ -84,7 +87,9 @@ class FinishScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  "Skor: $score / $totalQuestions",
+                  finalPercentage != null
+                      ? "Skor: ${finalPercentage!.toStringAsFixed(1)}%"
+                      : "Skor: $score / $totalQuestions",
                   style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -110,8 +115,10 @@ class FinishScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () {
                     // If we have quiz parameters, restart the quiz
-                    if (sectionSlug != null && levelId != null && 
-                        sectionTitle != null && sectionNumber != null && 
+                    if (sectionSlug != null &&
+                        levelId != null &&
+                        sectionTitle != null &&
+                        sectionNumber != null &&
                         levelNumber != null) {
                       Navigator.pushReplacement(
                         context,

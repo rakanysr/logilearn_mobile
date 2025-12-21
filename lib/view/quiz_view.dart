@@ -321,12 +321,50 @@ class _QuizScreenState extends State<QuizScreen> {
         _updateEssayController();
       });
     } else {
-      // Last question - navigate to finish screen
+      // Last question - fetch final score then navigate
+      setState(() => _isLoading = true);
+      double? finalScore;
+
+      try {
+        if (_currentAttemptId != null) {
+          final apiService = ApiService();
+          final res = await apiService.getAttemptById(_currentAttemptId!);
+          print('Finish Quiz - Get Attempt Result: $res');
+
+          if (res['success']) {
+            final data = res['data'];
+            // Try to parse score from various potential structures
+            dynamic rawScore;
+            if (data is Map) {
+              if (data['payload'] != null && data['payload']['datas'] != null) {
+                // Backend standard response format
+                rawScore = data['payload']['datas']['skor'];
+              } else if (data['skor'] != null) {
+                // Direct attempt object
+                rawScore = data['skor'];
+              }
+            }
+
+            if (rawScore != null) {
+              finalScore = double.tryParse(rawScore.toString());
+              print('Parsed Final Score: $finalScore');
+            }
+          }
+        }
+      } catch (e) {
+        print('Error fetching final score: $e');
+      }
+
+      setState(() => _isLoading = false);
+
+      if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => FinishScreen(
             score: score,
+            finalPercentage: finalScore,
             totalQuestions: questions.length,
             sectionSlug: widget.sectionSlug,
             levelId: widget.levelId,
