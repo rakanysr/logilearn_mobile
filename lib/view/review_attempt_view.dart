@@ -6,6 +6,7 @@ import 'package:logilearn/view/widgetAttempt/dropdown_button.dart'
 import 'package:logilearn/view/widgetAttempt/header_section.dart';
 import 'package:logilearn/view/widgetAttempt/question_card.dart';
 import 'package:logilearn/view/widgetAttempt/question_card_with_feedback.dart';
+import 'package:logilearn/view/home_view.dart';
 import 'package:logilearn/widget/bottombar.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -240,6 +241,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       return Scaffold(
         backgroundColor: Colors.white,
         body: const Center(child: CircularProgressIndicator()),
+        bottomNavigationBar: BottomNavBar(currentIndex: _currentBottomNavIndex),
       );
     }
 
@@ -265,7 +267,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _errorMessage!,
+                    'Review belum tersedia karena soal belum dikerjakan',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 14,
@@ -273,8 +275,16 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _loadLevelData,
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HomeView(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.home),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2977FF),
                       padding: const EdgeInsets.symmetric(
@@ -282,8 +292,8 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                         vertical: 12,
                       ),
                     ),
-                    child: Text(
-                      'Coba Lagi',
+                    label: Text(
+                      'Kembali ke Beranda',
                       style: GoogleFonts.inter(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -295,6 +305,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
             ),
           ),
         ),
+        bottomNavigationBar: BottomNavBar(currentIndex: _currentBottomNavIndex),
       );
     }
     return Theme(
@@ -447,18 +458,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
             ],
           ),
         ),
-        bottomNavigationBar: BottomNavBar(
-          currentIndex: _currentBottomNavIndex,
-          onTap: (index) {
-            setState(() {
-              _currentBottomNavIndex = index;
-            });
-            // Handle navigation based on index
-            if (index == 0) {
-            } else if (index == 1) {
-            } else if (index == 2) {}
-          },
-        ),
+        bottomNavigationBar: BottomNavBar(currentIndex: _currentBottomNavIndex),
       ),
     );
   }
