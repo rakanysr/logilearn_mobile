@@ -353,7 +353,8 @@ class _HomeViewState extends State<HomeView> {
               'Attempt: sectionId=$sectionId, levelId=$levelId, skor=$skor',
             );
 
-            // Only consider attempts with score >= 75 as completed
+            // Hanya menghitung attempts dengan score >= 75 sebagai completed
+            // Progress bar akan bertambah hanya jika user mendapatkan nilai >= 75
             if (skor >= 75.0) {
               // Track the highest level ID for this section
               if (!sectionMaxLevels.containsKey(sectionId) ||
@@ -362,6 +363,7 @@ class _HomeViewState extends State<HomeView> {
               }
 
               // Track unique completed level IDs for progress calculation
+              // Set ini digunakan untuk menghitung jumlah level yang sudah diselesaikan dengan score >= 75
               if (!sectionCompletedLevelIds.containsKey(sectionId)) {
                 sectionCompletedLevelIds[sectionId] = <int>{};
               }
@@ -391,14 +393,17 @@ class _HomeViewState extends State<HomeView> {
 
         // Default: unlock level 1 for first section, 0 for others
         int unlockedLevel = (i == 0) ? 1 : 0;
-        int completedLevels = 0; // Jumlah level yang sudah diselesaikan
+        // Jumlah level yang sudah diselesaikan dengan score >= 75
+        // Progress bar akan bertambah berdasarkan nilai ini
+        int completedLevels = 0;
 
         // If this section has completed attempts, unlock the next level
         if (sectionMaxLevels.containsKey(sectionId)) {
-          // Calculate completed levels count
+          // Calculate completed levels count (hanya level dengan score >= 75)
+          // Set sectionCompletedLevelIds berisi unique level IDs yang sudah diselesaikan dengan score >= 75
           if (sectionCompletedLevelIds.containsKey(sectionId)) {
             completedLevels = sectionCompletedLevelIds[sectionId]!.length;
-            print('Section $sectionId: completed $completedLevels levels');
+            print('Section $sectionId: completed $completedLevels levels (score >= 75)');
           }
           // User has completed at least one level in this section
           final maxCompletedLevelId = sectionMaxLevels[sectionId]!;
@@ -472,6 +477,8 @@ class _HomeViewState extends State<HomeView> {
         }
 
         // Update the section's unlocked level and completed levels
+        // completedLevels hanya menghitung level dengan score >= 75
+        // Progress bar akan bertambah berdasarkan nilai completedLevels ini
         if (mounted) {
           setState(() {
             _sections[i]['unlockedLevel'] = unlockedLevel;
@@ -480,7 +487,7 @@ class _HomeViewState extends State<HomeView> {
         }
 
         print(
-          'Section ${i + 1} (id=$sectionId): unlocked up to level $unlockedLevel, completed $completedLevels levels',
+          'Section ${i + 1} (id=$sectionId): unlocked up to level $unlockedLevel, completed $completedLevels levels (score >= 75)',
         );
       }
 
@@ -575,10 +582,16 @@ class _HomeViewState extends State<HomeView> {
           levelNumber: levelIndex + 1,
         ),
       ),
-    ).then((_) {
-      // Refresh unlock status when returning from quiz
-      print('Returned from quiz - refreshing unlock status');
-      _updateUnlockedLevels();
+    ).then((_) async {
+      // Refresh unlock status and progress when returning from quiz
+      print('Returned from quiz - refreshing unlock status and progress');
+      // Wait a bit to ensure backend has processed the attempt
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _updateUnlockedLevels();
+      // Force rebuild to update progress bar
+      if (mounted) {
+        setState(() {});
+      }
     });
   }
 
@@ -661,7 +674,8 @@ class _HomeViewState extends State<HomeView> {
       unlocked = selected['unlockedLevel'];
     }
 
-    // Get completed levels count
+    // Get completed levels count (hanya level dengan score >= 75)
+    // completedLevels dihitung di _updateUnlockedLevels() berdasarkan attempts dengan skor >= 75
     int completed = 0;
     if (selected['completedLevels'] is int) {
       completed = selected['completedLevels'];
@@ -673,7 +687,8 @@ class _HomeViewState extends State<HomeView> {
       total = selected['totalLevels'];
     }
 
-    // Progress dihitung berdasarkan level yang sudah diselesaikan, bukan unlocked
+    // Progress dihitung berdasarkan level yang sudah diselesaikan dengan nilai >= 75
+    // Progress bar akan bertambah hanya jika user mendapatkan nilai >= 75 pada level tersebut
     double sectionProgress = total > 0 ? completed / total : 0.0;
     int percentageDisplay = (sectionProgress * 100).toInt();
 
