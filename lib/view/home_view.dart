@@ -326,9 +326,9 @@ class _HomeViewState extends State<HomeView> {
 
       print('Found ${attemptsList.length} attempts');
 
-      // Create a map to track the highest completed level for each section
+      // Create a map to track the highest completed level for each section (with score >= 75)
       Map<int, int> sectionMaxLevels = {};
-      // Create a map to track completed level IDs per section (to count unique completed levels)
+      // Create a map to track completed level IDs per section (to count unique completed levels with score >= 75)
       Map<int, Set<int>> sectionCompletedLevelIds = {};
 
       // Process all attempts to find the highest level completed per section
@@ -336,24 +336,39 @@ class _HomeViewState extends State<HomeView> {
         try {
           // Structure: attempt['levels']['sections']['id'] = section ID
           // Structure: attempt['levels']['id'] = level ID
+          // Structure: attempt['skor'] = score (0-100)
           if (attempt['levels'] != null &&
               attempt['levels']['sections'] != null) {
             final sectionId = attempt['levels']['sections']['id'] as int;
             final levelId = attempt['levels']['id'] as int;
 
-            print('Attempt: sectionId=$sectionId, levelId=$levelId');
+            // Get the score from the attempt
+            final skor = attempt['skor'] != null
+                ? (attempt['skor'] is num
+                      ? (attempt['skor'] as num).toDouble()
+                      : 0.0)
+                : 0.0;
 
-            // Track the highest level ID for this section
-            if (!sectionMaxLevels.containsKey(sectionId) ||
-                levelId > sectionMaxLevels[sectionId]!) {
-              sectionMaxLevels[sectionId] = levelId;
-            }
+            print(
+              'Attempt: sectionId=$sectionId, levelId=$levelId, skor=$skor',
+            );
 
-            // Track unique completed level IDs for progress calculation
-            if (!sectionCompletedLevelIds.containsKey(sectionId)) {
-              sectionCompletedLevelIds[sectionId] = <int>{};
+            // Only consider attempts with score >= 75 as completed
+            if (skor >= 75.0) {
+              // Track the highest level ID for this section
+              if (!sectionMaxLevels.containsKey(sectionId) ||
+                  levelId > sectionMaxLevels[sectionId]!) {
+                sectionMaxLevels[sectionId] = levelId;
+              }
+
+              // Track unique completed level IDs for progress calculation
+              if (!sectionCompletedLevelIds.containsKey(sectionId)) {
+                sectionCompletedLevelIds[sectionId] = <int>{};
+              }
+              sectionCompletedLevelIds[sectionId]!.add(levelId);
+            } else {
+              print('  Score $skor is below 75, not counting as completed');
             }
-            sectionCompletedLevelIds[sectionId]!.add(levelId);
           }
         } catch (e) {
           print('Error processing attempt: $e');
@@ -593,7 +608,7 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
                 content: Text(
-                  "Selesaikan level sebelumnya dulu untuk membuka level ini.",
+                  "Selesaikan level sebelumnya dengan nilai minimal 75 untuk membuka level ini.",
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(color: Colors.black54),
                 ),
