@@ -50,10 +50,10 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   Map<int, int> _userAnswers =
-      {}; // Store user's selected answers for PG questions (index)
-  Map<int, String> _userEssayAnswers = {}; // Store user's essay answers
+      {}; 
+  Map<int, String> _userEssayAnswers = {}; 
   TextEditingController? _essayController;
-  int? _currentAttemptId; // Store attempt ID for submitting answers
+  int? _currentAttemptId; 
 
   @override
   void initState() {
@@ -89,12 +89,12 @@ class _QuizScreenState extends State<QuizScreen> {
         throw Exception(attemptRes['message']);
       }
 
-      // Parse attempt ID from backend response
+    
       final attemptData = attemptRes['data'];
       print('DEBUG: Full attempt response: $attemptData');
 
       if (attemptData is Map) {
-        // Try to get from payload.datas.id (standard backend response)
+
         if (attemptData['payload'] is Map &&
             attemptData['payload']['datas'] is Map &&
             attemptData['payload']['datas']['id'] != null) {
@@ -103,12 +103,12 @@ class _QuizScreenState extends State<QuizScreen> {
             'DEBUG: Got attempt ID from payload.datas.id: $_currentAttemptId',
           );
         }
-        // Fallback: try direct id
+   
         else if (attemptData['id'] != null) {
           _currentAttemptId = attemptData['id'];
           print('DEBUG: Got attempt ID from direct id: $_currentAttemptId');
         }
-        // Fallback: try data.id
+    
         else if (attemptData['data'] is Map &&
             attemptData['data']['id'] != null) {
           _currentAttemptId = attemptData['data']['id'];
@@ -122,7 +122,7 @@ class _QuizScreenState extends State<QuizScreen> {
       }
       print('✓ Attempt created successfully with ID: $_currentAttemptId');
 
-      // 2. Load Questions
+   
       print(
         'Loading questions for level ${widget.levelId} in section ${widget.sectionSlug}',
       );
@@ -136,7 +136,7 @@ class _QuizScreenState extends State<QuizScreen> {
         final fullResponse = result['data'];
         List<dynamic> soalsList = [];
 
-        // Parse response structure
+   
         if (fullResponse is Map && fullResponse['payload'] is Map) {
           final payload = fullResponse['payload'] as Map;
           if (payload['datas'] is List) {
@@ -158,7 +158,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       ? Map<String, dynamic>.from(soal)
                       : <String, dynamic>{});
 
-            final id = soalMap['id']; // Capture ID
+            final id = soalMap['id']; 
             final tipe = soalMap['tipe'] as String? ?? 'pg';
             final textSoal = soalMap['text_soal'] as String? ?? '';
             final isEssay = tipe == 'esai';
@@ -166,7 +166,7 @@ class _QuizScreenState extends State<QuizScreen> {
             if (isEssay) {
               return Question(id: id, question: textSoal, isEssay: true);
             } else {
-              // Parse options for PG questions
+            
               List<dynamic> opsisList = [];
               if (soalMap['opsis'] is List) {
                 opsisList = soalMap['opsis'] as List;
@@ -191,7 +191,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 options.add(text);
                 optionIds.add(optId);
 
-                // Check if this is the correct answer
+              
                 if ((opsiMap['is_correct'] == true) ||
                     (opsiMap['is_benar'] == true)) {
                   correctIndex = i;
@@ -262,7 +262,7 @@ class _QuizScreenState extends State<QuizScreen> {
           print('Skipping empty essay answer');
         }
       } else {
-        // PG
+      
         if (selectedIndex != null && currentQ.optionIds != null) {
           final optId = currentQ.optionIds![selectedIndex!];
           print(
@@ -290,7 +290,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final currentQ = questions[currentIndex];
 
-    // Save answer locally
+    
     if (currentQ.isEssay) {
       _userEssayAnswers[currentIndex] = essayAnswer;
     } else {
@@ -300,16 +300,16 @@ class _QuizScreenState extends State<QuizScreen> {
       }
     }
 
-    // Submit Answer to Backend in real-time
+    
     setState(() => _isLoading = true);
     await _submitCurrentAnswer();
     setState(() => _isLoading = false);
 
     if (currentIndex < questions.length - 1) {
-      // Move to next question
+     
       setState(() {
         currentIndex++;
-        // Restore previous answer if exists, otherwise reset
+       
         if (_userAnswers.containsKey(currentIndex)) {
           final savedIndex = _userAnswers[currentIndex];
           selectedIndex = savedIndex == -1 ? null : savedIndex;
@@ -317,24 +317,24 @@ class _QuizScreenState extends State<QuizScreen> {
           selectedIndex = null;
         }
         essayAnswer = _userEssayAnswers[currentIndex] ?? "";
-        // Update essay controller for new question
+        
         _updateEssayController();
       });
     } else {
-      // Last question - fetch final score then navigate
+ 
       setState(() => _isLoading = true);
       double? finalScore;
 
       try {
         if (_currentAttemptId != null) {
           final apiService = ApiService();
-          // Use submitAttempt to trigger definitive recalculation
+ 
           final res = await apiService.submitAttempt(_currentAttemptId!);
           print('Finish Quiz - Submit Attempt Result: $res');
 
           if (res['success']) {
             final data = res['data'];
-            // Try to parse score from various potential structures
+        
             dynamic rawScore;
             if (data is Map) {
               if (data['payload'] != null && data['payload']['datas'] != null) {
@@ -422,7 +422,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Show loading if loading OR if submitting answer (nextQuestion triggers setState _isLoading)
+
     if (_isLoading) {
       return Scaffold(
         body: SafeArea(
@@ -484,12 +484,11 @@ class _QuizScreenState extends State<QuizScreen> {
     final question = questions[currentIndex];
     final progress = (currentIndex + 1) / questions.length;
 
-    // Initialize essay controller if needed
+
     if (question.isEssay && _essayController == null) {
       _updateEssayController();
     }
 
-    // Get current answer state
     final currentSelectedIndex =
         !question.isEssay && _userAnswers.containsKey(currentIndex)
         ? (_userAnswers[currentIndex] == -1 ? null : _userAnswers[currentIndex])

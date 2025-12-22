@@ -125,7 +125,7 @@ class _HomeViewState extends State<HomeView> {
           }
         } catch (e) {
           print("Error parsing sections: $e");
-          // Handle error gracefully
+      
           _sections = [];
         }
       } else {
@@ -247,7 +247,7 @@ class _HomeViewState extends State<HomeView> {
             final sectionId = attempt['levels']['sections']['id'] as int;
             final levelId = attempt['levels']['id'] as int;
 
-            // Get the score from the attempt
+   
             final skor = attempt['skor'] != null
                 ? (attempt['skor'] is num
                       ? (attempt['skor'] as num).toDouble()
@@ -300,17 +300,17 @@ class _HomeViewState extends State<HomeView> {
               'Section $sectionId: completed $completedLevels levels (score >= 75)',
             );
           }
-          // User has completed at least one level in this section
+          
           final maxCompletedLevelId = sectionMaxLevels[sectionId]!;
 
-          // Fetch levels for THIS specific section to find the level index
+          
           final levelsResult = await apiService.getLevelsBySection(sectionSlug);
 
           if (levelsResult['success']) {
             final levelsResponse = levelsResult['data'];
             List<dynamic> sectionLevelsList = [];
 
-            // Parse levels response
+          
             if (levelsResponse is Map &&
                 levelsResponse['payload'] is Map &&
                 levelsResponse['payload']['datas'] is List) {
@@ -319,7 +319,7 @@ class _HomeViewState extends State<HomeView> {
               sectionLevelsList = levelsResponse;
             }
 
-            // Sort levels by ID to ensure correct ordering
+       
             sectionLevelsList.sort((a, b) {
               final aId = a['id'] is int ? a['id'] as int : 0;
               final bId = b['id'] is int ? b['id'] as int : 0;
@@ -330,7 +330,7 @@ class _HomeViewState extends State<HomeView> {
               'Section $sectionId ($sectionSlug) has ${sectionLevelsList.length} levels',
             );
 
-            // Find the index of the highest completed level
+
             int completedLevelIndex = -1;
             for (var j = 0; j < sectionLevelsList.length; j++) {
               final levelId = sectionLevelsList[j]['id'] as int;
