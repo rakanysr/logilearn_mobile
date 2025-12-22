@@ -4,18 +4,24 @@ class HeaderSection extends StatelessWidget {
   final String selectedSection;
   final String selectedTitle;
   final VoidCallback onNextSection;
+  final VoidCallback? onPreviousLevel; // Add callback for previous level
   final double? score; // Add score parameter
   final bool hasAttempt; // Whether this section has been attempted
   final int sectionNumber; // Section number for color synchronization
+  final bool canNavigatePrevious; // Whether previous navigation is available
+  final bool canNavigateNext; // Whether next navigation is available
 
   const HeaderSection({
     super.key,
     required this.selectedSection,
     required this.selectedTitle,
     required this.onNextSection,
+    this.onPreviousLevel, // Optional callback for previous level
     this.score, // Optional score
     required this.hasAttempt, // Required: indicates if section has attempt data
     required this.sectionNumber, // Required: section number for color
+    this.canNavigatePrevious = true, // Default to true
+    this.canNavigateNext = true, // Default to true
   });
 
   // Get section color based on section number (synchronized with dropdown)
@@ -41,6 +47,21 @@ class HeaderSection extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Left arrow icon - for previous level
+          if (canNavigatePrevious && onPreviousLevel != null)
+            GestureDetector(
+              onTap: onPreviousLevel,
+              child: const Icon(
+                Icons.arrow_back_ios,
+                color: Color(0xFF2977FF),
+                size: 22,
+              ),
+            )
+          else
+            const SizedBox(width: 22), // Placeholder to maintain spacing
+
+          const SizedBox(width: 16),
+
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -114,7 +135,9 @@ class HeaderSection extends StatelessWidget {
                         width: 90,
                         height: 20,
                         decoration: BoxDecoration(
-                          color: _getSectionColor(sectionNumber).withOpacity(0.4),
+                          color: _getSectionColor(
+                            sectionNumber,
+                          ).withOpacity(0.4),
                           shape: BoxShape.rectangle,
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -129,7 +152,9 @@ class HeaderSection extends StatelessWidget {
                         color: _getSectionColor(sectionNumber),
                         boxShadow: [
                           BoxShadow(
-                            color: _getSectionColor(sectionNumber).withOpacity(0.3),
+                            color: _getSectionColor(
+                              sectionNumber,
+                            ).withOpacity(0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -169,15 +194,18 @@ class HeaderSection extends StatelessWidget {
 
           const SizedBox(width: 16),
 
-          // Right arrow icon - vertically centered
-          GestureDetector(
-            onTap: onNextSection,
-            child: const Icon(
-              Icons.arrow_forward_ios,
-              color: Color(0xFF2977FF),
-              size: 22,
-            ),
-          ),
+          // Right arrow icon - for next level
+          if (canNavigateNext)
+            GestureDetector(
+              onTap: onNextSection,
+              child: const Icon(
+                Icons.arrow_forward_ios,
+                color: Color(0xFF2977FF),
+                size: 22,
+              ),
+            )
+          else
+            const SizedBox(width: 22), // Placeholder to maintain spacing
         ],
       ),
     );
