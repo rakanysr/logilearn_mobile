@@ -15,7 +15,7 @@ class QuizApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'LogiLearn',
       theme: ThemeData(
-        primarySwatch: Colors.blue, 
+        primarySwatch: Colors.blue,
         textTheme: GoogleFonts.interTextTheme(),
         fontFamily: GoogleFonts.inter().fontFamily,
       ),
