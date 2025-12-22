@@ -12,64 +12,59 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
-  
-
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isPasswordVisible = false;
 
   final AuthService _authService = AuthService();
   final _storage = const FlutterSecureStorage();
 
   void _handleLogin() async {
-  final username = _usernameController.text.trim();
-  final password = _passwordController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
-  if (username.isEmpty || password.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Username dan password wajib diisi"),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Username dan password wajib diisi"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final result = await _authService.loginPelajar(username, password);
+
+    if (result['statusCode'] == 200) {
+      final nama = await _storage.read(key: "nama_pelajar");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("${result['message']}, selamat datang ${nama}"),
+          backgroundColor: const Color(0xFF2977FF),
+        ),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeView()),
+      );
+    } else if (result['statusCode'] == 401 || result['statusCode'] == 404) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Username atau Password salah"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? "Terjadi kesalahan"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
-
-  final result = await _authService.loginPelajar(username, password);
-
-  if (result['statusCode'] == 200) {
-    final nama = await _storage.read(key: "nama_pelajar");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("${result['message']}, selamat datang ${nama}"),
-        backgroundColor: const Color(0xFF2977FF),
-      ),
-    );
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeView()),
-    );
-  } 
-  else if (result['statusCode'] == 401 || result['statusCode'] == 404) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Username atau Password salah"),
-        backgroundColor: Colors.red,
-      ),
-    );
-  } 
-  else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message'] ?? "Terjadi kesalahan"),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-}
-
 
   @override
   void dispose() {
@@ -88,18 +83,13 @@ class _LoginViewState extends State<LoginView> {
           Container(
             height: screenSize.height * 0.45,
             width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFF2977FF), 
-            ),
+            decoration: const BoxDecoration(color: Color(0xFF2977FF)),
           ),
           Positioned(
-            top: screenSize.height * 0.1, 
+            top: screenSize.height * 0.1,
             left: 0,
             right: 0,
-            child: Image.asset(
-              'assets/images/Mascot halo.png', 
-              height: 180,
-            ),
+            child: Image.asset('assets/images/Mascot halo.png', height: 180),
           ),
 
           Align(
@@ -131,10 +121,7 @@ class _LoginViewState extends State<LoginView> {
 
                     const Text(
                       'Login atau Register sekarang! untuk menikmati semua fitur yang tersedia di LogiLearn',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.black54,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.black54),
                     ),
                     const SizedBox(height: 24),
 
@@ -147,7 +134,7 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // Input Field Username
                     TextFormField(
                       controller: _usernameController,
@@ -225,7 +212,7 @@ class _LoginViewState extends State<LoginView> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -257,7 +244,7 @@ class _LoginViewState extends State<LoginView> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => RegisterView(),
-                            )
+                            ),
                           );
                         },
                         style: OutlinedButton.styleFrom(
