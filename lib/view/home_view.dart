@@ -25,7 +25,6 @@ class _HomeViewState extends State<HomeView> {
   List<Map<String, dynamic>> _levels = [];
   final _storage = const FlutterSecureStorage();
 
-  // Default Sections (Fallback)
   final List<Map<String, dynamic>> _defaultSections = [
     {
       'section': 'SECTION 1',
@@ -33,8 +32,8 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF2F80ED),
       'image': 'assets/images/Mascot halo.png',
       'unlockedLevel': 0,
-      'completedLevels': 0, // Jumlah level yang sudah diselesaikan
-      'levelScores': <int>[], // Explicit type
+      'completedLevels': 0, 
+      'levelScores': <int>[], 
       'totalLevels': 10,
     },
     {
@@ -43,8 +42,8 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF2D9CDB),
       'image': 'assets/images/Mascot banyak.png',
       'unlockedLevel': 0,
-      'completedLevels': 0, // Jumlah level yang sudah diselesaikan
-      'levelScores': <int>[], // Explicit type
+      'completedLevels': 0, 
+      'levelScores': <int>[], 
       'totalLevels': 10,
     },
     {
@@ -53,8 +52,8 @@ class _HomeViewState extends State<HomeView> {
       'color': const Color(0xFF27AE60),
       'image': 'assets/images/Mascot buntung.png',
       'unlockedLevel': 0,
-      'completedLevels': 0, // Jumlah level yang sudah diselesaikan
-      'levelScores': <int>[], // Explicit type
+      'completedLevels': 0, 
+      'levelScores': <int>[], 
       'totalLevels': 10,
     },
   ];
@@ -69,7 +68,7 @@ class _HomeViewState extends State<HomeView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Refresh unlock status when returning to this screen
+
     if (_sections.isNotEmpty) {
       print('HomeView: didChangeDependencies - refreshing unlock status');
       _updateUnlockedLevels();
@@ -97,14 +96,13 @@ class _HomeViewState extends State<HomeView> {
       final fullResponse = result['data'];
       List<dynamic> sectionsList = [];
 
-      // Parsing the specific structure from helpers/response.js
-      // Structure: { payload: { datas: [...] } }
+    
       if (fullResponse is Map &&
           fullResponse['payload'] is Map &&
           fullResponse['payload']['datas'] is List) {
         sectionsList = fullResponse['payload']['datas'];
       } else if (fullResponse is List) {
-        // Fallback if structure changes
+
         sectionsList = fullResponse;
       }
 
@@ -115,7 +113,7 @@ class _HomeViewState extends State<HomeView> {
           for (var i = 0; i < sectionsList.length; i++) {
             final item = sectionsList[i];
 
-            // Color Assignment based on index
+       
             Color sectionColor;
             if (i % 3 == 0)
               sectionColor = const Color(0xFF2F80ED);
@@ -124,7 +122,7 @@ class _HomeViewState extends State<HomeView> {
             else
               sectionColor = const Color(0xFF27AE60);
 
-            // Image Assignment based on index
+      
             String imageAsset;
             if (i % 3 == 0)
               imageAsset = 'assets/images/Mascot halo.png';
@@ -133,20 +131,18 @@ class _HomeViewState extends State<HomeView> {
             else
               imageAsset = 'assets/images/Mascot buntung.png';
 
-            // Unlocked Level Logic
-            // Semua section bisa dikerjakan dari awal tanpa harus menyelesaikan section sebelumnya
-            // Setiap section di-unlock level 1 secara default
+
             int unlocked = 1;
 
-            // Levels parsing
+       
             List<dynamic> levels = [];
             if (item['levels'] is List) {
               levels = item['levels'];
             }
-            // Calculate total levels from backend data
+           
             int totalLev = levels.isNotEmpty ? levels.length : 10;
 
-            // Generate empty scores for now
+          
             List<int> scores = [];
 
             parsedSections.add({
@@ -155,7 +151,7 @@ class _HomeViewState extends State<HomeView> {
               'color': sectionColor,
               'image': imageAsset,
               'unlockedLevel': unlocked,
-              'completedLevels': 0, // Jumlah level yang sudah diselesaikan
+              'completedLevels': 0, 
               'levelScores': scores,
               'totalLevels': totalLev,
               'slug': item['slug'] ?? 'section-${i + 1}',
@@ -165,12 +161,12 @@ class _HomeViewState extends State<HomeView> {
 
           _sections = parsedSections;
 
-          // Load levels for the first section and unlock based on attempts
+         
           if (_sections.isNotEmpty) {
             final firstSection = _sections[0];
             final slugSection = firstSection['slug'] as String? ?? 'section-1';
             await _loadLevelsForSection(slugSection);
-            await _updateUnlockedLevels(); // Update unlock status based on attempts
+            await _updateUnlockedLevels(); 
           }
         } catch (e) {
           print("Error parsing sections: $e");
@@ -192,20 +188,20 @@ class _HomeViewState extends State<HomeView> {
 
   void _useDefaultSections() {
     _sections = List.from(_defaultSections);
-    // Semua section bisa dikerjakan dari awal - unlock level 1 untuk semua section
+  
     for (var i = 0; i < _sections.length; i++) {
       final section = Map<String, dynamic>.from(_sections[i]);
-      // Setiap section di-unlock level 1 secara default
+
       if ((section['unlockedLevel'] as int) < 1) {
         section['unlockedLevel'] = 1;
       }
       section['slug'] = 'section-${i + 1}';
       section['id'] = i + 1;
-      section['completedLevels'] = 0; // Initialize completed levels
+      section['completedLevels'] = 0; 
       _sections[i] = section;
     }
 
-    // Load levels for the first section
+
     if (_sections.isNotEmpty) {
       final firstSection = _sections[0];
       final slugSection = firstSection['slug'] as String? ?? 'section-1';
@@ -235,8 +231,7 @@ class _HomeViewState extends State<HomeView> {
       final fullResponse = result['data'];
       List<dynamic> levelsList = [];
 
-      // Parse response structure from helpers/response.js
-      // Structure: { payload: { datas: [...] } }
+
       if (fullResponse is Map &&
           fullResponse['payload'] is Map &&
           fullResponse['payload']['datas'] is List) {
@@ -282,13 +277,12 @@ class _HomeViewState extends State<HomeView> {
     print('_updateUnlockedLevels called');
     final apiService = ApiService();
 
-    // Get pelajar ID from storage
     final pelajarIdStr = await _storage.read(key: 'id_pelajar');
     print('Pelajar ID from storage: $pelajarIdStr');
 
     if (pelajarIdStr == null) {
       print('No pelajar ID found in storage');
-      // Default: unlock level 1 untuk semua section
+  
       if (_sections.isNotEmpty && mounted) {
         setState(() {
           for (var i = 0; i < _sections.length; i++) {
@@ -308,14 +302,14 @@ class _HomeViewState extends State<HomeView> {
 
     print('Fetching attempts for pelajar ID: $pelajarId');
 
-    // Get user's attempts to determine progress
+    
     final result = await apiService.getAttemptsByPelajarId(pelajarId);
 
     if (result['success']) {
       final fullResponse = result['data'];
       List<dynamic> attemptsList = [];
 
-      // Parse response structure: { payload: { datas: [...] } }
+
       if (fullResponse is Map &&
           fullResponse['payload'] is Map &&
           fullResponse['payload']['datas'] is List) {
@@ -326,23 +320,21 @@ class _HomeViewState extends State<HomeView> {
 
       print('Found ${attemptsList.length} attempts');
 
-      // Create a map to track the highest completed level for each section (with score >= 75)
+   
       Map<int, int> sectionMaxLevels = {};
-      // Create a map to track completed level IDs per section (to count unique completed levels with score >= 75)
+    
       Map<int, Set<int>> sectionCompletedLevelIds = {};
 
-      // Process all attempts to find the highest level completed per section
+     
       for (var attempt in attemptsList) {
         try {
-          // Structure: attempt['levels']['sections']['id'] = section ID
-          // Structure: attempt['levels']['id'] = level ID
-          // Structure: attempt['skor'] = score (0-100)
+      
           if (attempt['levels'] != null &&
               attempt['levels']['sections'] != null) {
             final sectionId = attempt['levels']['sections']['id'] as int;
             final levelId = attempt['levels']['id'] as int;
 
-            // Get the score from the attempt
+           
             final skor = attempt['skor'] != null
                 ? (attempt['skor'] is num
                       ? (attempt['skor'] as num).toDouble()
@@ -353,17 +345,15 @@ class _HomeViewState extends State<HomeView> {
               'Attempt: sectionId=$sectionId, levelId=$levelId, skor=$skor',
             );
 
-            // Hanya menghitung attempts dengan score >= 75 sebagai completed
-            // Progress bar akan bertambah hanya jika user mendapatkan nilai >= 75
+           
             if (skor >= 75.0) {
-              // Track the highest level ID for this section
+             
               if (!sectionMaxLevels.containsKey(sectionId) ||
                   levelId > sectionMaxLevels[sectionId]!) {
                 sectionMaxLevels[sectionId] = levelId;
               }
 
-              // Track unique completed level IDs for progress calculation
-              // Set ini digunakan untuk menghitung jumlah level yang sudah diselesaikan dengan score >= 75
+           
               if (!sectionCompletedLevelIds.containsKey(sectionId)) {
                 sectionCompletedLevelIds[sectionId] = <int>{};
               }
@@ -380,7 +370,7 @@ class _HomeViewState extends State<HomeView> {
       print('Section max levels: $sectionMaxLevels');
       print('Section completed level IDs: $sectionCompletedLevelIds');
 
-      // Now update each section's unlocked level
+      
       for (var i = 0; i < _sections.length; i++) {
         final section = _sections[i];
         final sectionId = section['id'] as int?;
@@ -391,31 +381,29 @@ class _HomeViewState extends State<HomeView> {
           continue;
         }
 
-        // Default: unlock level 1 untuk semua section (semua section bisa dikerjakan dari awal)
+      
         int unlockedLevel = 1;
-        // Jumlah level yang sudah diselesaikan dengan score >= 75
-        // Progress bar akan bertambah berdasarkan nilai ini
+     
         int completedLevels = 0;
 
-        // If this section has completed attempts, unlock the next level
+       
         if (sectionMaxLevels.containsKey(sectionId)) {
-          // Calculate completed levels count (hanya level dengan score >= 75)
-          // Set sectionCompletedLevelIds berisi unique level IDs yang sudah diselesaikan dengan score >= 75
+        
           if (sectionCompletedLevelIds.containsKey(sectionId)) {
             completedLevels = sectionCompletedLevelIds[sectionId]!.length;
             print('Section $sectionId: completed $completedLevels levels (score >= 75)');
           }
-          // User has completed at least one level in this section
+         
           final maxCompletedLevelId = sectionMaxLevels[sectionId]!;
 
-          // Fetch levels for THIS specific section to find the level index
+         
           final levelsResult = await apiService.getLevelsBySection(sectionSlug);
 
           if (levelsResult['success']) {
             final levelsResponse = levelsResult['data'];
             List<dynamic> sectionLevelsList = [];
 
-            // Parse levels response
+            
             if (levelsResponse is Map &&
                 levelsResponse['payload'] is Map &&
                 levelsResponse['payload']['datas'] is List) {
@@ -424,7 +412,7 @@ class _HomeViewState extends State<HomeView> {
               sectionLevelsList = levelsResponse;
             }
 
-            // Sort levels by ID to ensure correct ordering
+         
             sectionLevelsList.sort((a, b) {
               final aId = a['id'] is int ? a['id'] as int : 0;
               final bId = b['id'] is int ? b['id'] as int : 0;
@@ -435,7 +423,7 @@ class _HomeViewState extends State<HomeView> {
               'Section $sectionId ($sectionSlug) has ${sectionLevelsList.length} levels',
             );
 
-            // Find the index of the highest completed level
+            
             int completedLevelIndex = -1;
             for (var j = 0; j < sectionLevelsList.length; j++) {
               final levelId = sectionLevelsList[j]['id'] as int;
@@ -447,12 +435,10 @@ class _HomeViewState extends State<HomeView> {
             }
 
             if (completedLevelIndex != -1) {
-              // Unlock the next level after the completed one
-              // Level numbers are 1-based, index is 0-based
-              // If user completed index 0 (level 1), unlock index 1 (level 2)
+              
               unlockedLevel = completedLevelIndex + 2;
 
-              // Don't unlock more than total levels
+             
               if (unlockedLevel > sectionLevelsList.length) {
                 unlockedLevel = sectionLevelsList.length;
               }
@@ -461,14 +447,14 @@ class _HomeViewState extends State<HomeView> {
                 'Section $sectionId: completed index $completedLevelIndex, unlocking level $unlockedLevel',
               );
             } else {
-              // Completed level not found in list? Unlock level 1
+            
               unlockedLevel = 1;
               print(
                 'Section $sectionId: completed level not found in list, unlocking level 1',
               );
             }
           } else {
-            // Failed to fetch levels, but has attempts - unlock level 1
+          
             unlockedLevel = 1;
             print(
               'Section $sectionId: failed to fetch levels, unlocking level 1',
@@ -476,9 +462,7 @@ class _HomeViewState extends State<HomeView> {
           }
         }
 
-        // Update the section's unlocked level and completed levels
-        // completedLevels hanya menghitung level dengan score >= 75
-        // Progress bar akan bertambah berdasarkan nilai completedLevels ini
+        
         if (mounted) {
           setState(() {
             _sections[i]['unlockedLevel'] = unlockedLevel;
@@ -491,7 +475,7 @@ class _HomeViewState extends State<HomeView> {
         );
       }
 
-      // Pastikan semua section minimal level 1 terbuka (semua section bisa dikerjakan dari awal)
+    
       if (mounted) {
         setState(() {
           for (var i = 0; i < _sections.length; i++) {
@@ -513,7 +497,7 @@ class _HomeViewState extends State<HomeView> {
       print('========================================');
     } else {
       print('Failed to fetch attempts: ${result['message']}');
-      // If we can't fetch attempts, unlock level 1 untuk semua section
+    
       if (_sections.isNotEmpty && mounted) {
         setState(() {
           for (var i = 0; i < _sections.length; i++) {
@@ -543,13 +527,13 @@ class _HomeViewState extends State<HomeView> {
     print('  slugSection: $slugSection');
     print('  _levels.length: ${_levels.length}');
 
-    // Always load levels for this section to ensure we have the latest data
+    
     await _loadLevelsForSection(slugSection);
 
-    // Wait a bit for state to update
+   
     await Future.delayed(const Duration(milliseconds: 100));
 
-    // Check if level exists
+
     if (levelIndex >= _levels.length || _levels.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -583,7 +567,7 @@ class _HomeViewState extends State<HomeView> {
       return;
     }
 
-    // Navigate to quiz screen with level data
+    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -596,12 +580,12 @@ class _HomeViewState extends State<HomeView> {
         ),
       ),
     ).then((_) async {
-      // Refresh unlock status and progress when returning from quiz
+      
       print('Returned from quiz - refreshing unlock status and progress');
-      // Wait a bit to ensure backend has processed the attempt
+     
       await Future.delayed(const Duration(milliseconds: 500));
       await _updateUnlockedLevels();
-      // Force rebuild to update progress bar
+    
       if (mounted) {
         setState(() {});
       }
@@ -671,7 +655,7 @@ class _HomeViewState extends State<HomeView> {
       );
     }
 
-    // Ensure we have valid selection index
+   
     if (_selectedSectionIndex >= _sections.length) {
       _selectedSectionIndex = 0;
     }
@@ -681,27 +665,25 @@ class _HomeViewState extends State<HomeView> {
         : _defaultSections[0];
     final screenWidth = MediaQuery.of(context).size.width;
 
-    // Safely handle types
+   
     int unlocked = 0;
     if (selected['unlockedLevel'] is int) {
       unlocked = selected['unlockedLevel'];
     }
 
-    // Get completed levels count (hanya level dengan score >= 75)
-    // completedLevels dihitung di _updateUnlockedLevels() berdasarkan attempts dengan skor >= 75
+    
     int completed = 0;
     if (selected['completedLevels'] is int) {
       completed = selected['completedLevels'];
     }
 
-    // Use actual levels count from backend, or fallback to totalLevels
+    
     int total = _levels.isNotEmpty ? _levels.length : 10;
     if (selected['totalLevels'] is int && _levels.isEmpty) {
       total = selected['totalLevels'];
     }
 
-    // Progress dihitung berdasarkan level yang sudah diselesaikan dengan nilai >= 75
-    // Progress bar akan bertambah hanya jika user mendapatkan nilai >= 75 pada level tersebut
+    
     double sectionProgress = total > 0 ? completed / total : 0.0;
     int percentageDisplay = (sectionProgress * 100).toInt();
 
@@ -1066,17 +1048,17 @@ class _HomeViewState extends State<HomeView> {
                             setState(() {
                               _selectedSectionIndex = index;
                               _isDropdownOpen = false;
-                              _levels = []; // Reset levels when section changes
+                              _levels = []; 
                             });
-                            // Load levels for selected section
+                         
                             final selectedSection = _sections[index];
                             final slugSection =
                                 selectedSection['slug'] as String? ??
                                 'section-${index + 1}';
                             await _loadLevelsForSection(slugSection);
-                            // Update progress for the selected section
+                            
                             await _updateUnlockedLevels();
-                            // Pastikan level 1 selalu terbuka untuk semua section
+                           
                             if (mounted) {
                               setState(() {
                                 for (var i = 0; i < _sections.length; i++) {
