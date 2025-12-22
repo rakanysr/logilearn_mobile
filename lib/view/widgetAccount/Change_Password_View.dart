@@ -18,18 +18,45 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
   bool _obscureOld = true;
   bool _obscureNew = true;
 
+  String? _validateNewPassword(String password) {
+    if (password.isEmpty) {
+      return 'Password baru tidak boleh kosong.';
+    }
+    if (password.length < 8) {
+      return 'Password harus terdiri dari minimal 8 karakter.';
+    }
+    if (!password.contains(RegExp(r'[A-Z]'))) {
+      return 'Password harus mengandung minimal satu huruf kapital.';
+    }
+    if (!password.contains(RegExp(r'[0-9]'))) {
+      return 'Password harus mengandung minimal satu angka.';
+    }
+    return null;
+  }
+
   void _handleUpdate() async {
-    if (_oldPwController.text.isEmpty || _newPwController.text.isEmpty) {
-      _showMsg("Mohon isi semua data!", Colors.orange);
+    final oldPw = _oldPwController.text.trim();
+    final newPw = _newPwController.text.trim();
+
+    if (oldPw.isEmpty || newPw.isEmpty) {
+      _showMsg("Harap isi semua kolom!", Colors.red);
+      return;
+    }
+
+    String? passwordError = _validateNewPassword(newPw);
+    if (passwordError != null) {
+      _showMsg(passwordError, Colors.red);
+      return;
+    }
+
+    if (oldPw == newPw) {
+      _showMsg("Sandi baru tidak boleh sama dengan sandi lama.", Colors.red);
       return;
     }
 
     setState(() => _isLoading = true);
 
-    final response = await _apiService.changePassword(
-      _oldPwController.text,
-      _newPwController.text,
-    );
+    final response = await _apiService.changePassword(oldPw, newPw);
 
     setState(() => _isLoading = false);
 
@@ -42,7 +69,6 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
 
     if (isSuccess) {
       final messenger = ScaffoldMessenger.of(context);
-
       if (mounted) Navigator.of(context).pop();
 
       messenger.showSnackBar(
@@ -96,7 +122,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "Ganti Kata Sandi",
+          "Keamanan",
           style: GoogleFonts.inter(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -121,7 +147,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
             ),
             const SizedBox(height: 8),
             Text(
-              "Pastikan kata sandi baru Anda kuat dan sulit ditebak oleh orang lain.",
+              "Sandi baru harus minimal 8 karakter, mengandung huruf kapital dan angka.",
               style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 40),
@@ -206,6 +232,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
       child: TextField(
         controller: controller,
         obscureText: isObscured,
+        style: GoogleFonts.inter(),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.inter(color: Colors.grey[400], fontSize: 14),
