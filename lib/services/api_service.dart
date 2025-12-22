@@ -139,9 +139,6 @@ class ApiService {
     }
   }
 
-  // --- Attempts (Real-time Submission) ---
-
-  /// Create a new attempt for a level
   Future<Map<String, dynamic>> createAttempt(int levelId) async {
     final url = Uri.parse('$baseUrl/attempts');
     try {
@@ -179,7 +176,6 @@ class ApiService {
     }
   }
 
-  /// Submit a PG (multiple choice) answer
   Future<Map<String, dynamic>> submitJawabanPG(
     int attemptId,
     int opsiId,
@@ -214,7 +210,6 @@ class ApiService {
     }
   }
 
-  /// Submit an essay answer
   Future<Map<String, dynamic>> submitJawabanEsai(
     int attemptId,
     int soalId,
@@ -250,8 +245,6 @@ class ApiService {
     }
   }
 
-  /// Submit all answers at once (batch submission)
-  /// Finalize attempt (calculate total score on backend)
   Future<Map<String, dynamic>> submitAttempt(int attemptId) async {
     final url = Uri.parse('$baseUrl/attempts/submit');
     try {
