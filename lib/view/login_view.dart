@@ -52,18 +52,10 @@ class _LoginViewState extends State<LoginView> {
       MaterialPageRoute(builder: (_) => const HomeView()),
     );
   } 
-  else if (result['statusCode'] == 401) {
+  else if (result['statusCode'] == 401 || result['statusCode'] == 404) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Password salah"),
-        backgroundColor: Colors.red,
-      ),
-    );
-  } 
-  else if (result['statusCode'] == 404) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Pelajar tidak ditemukan"),
+        content: Text("Username atau Password salah"),
         backgroundColor: Colors.red,
       ),
     );
