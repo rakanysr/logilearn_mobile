@@ -61,10 +61,7 @@ class AuthService {
     return null;
   }
 
-  Future<Map<String, dynamic>> loginPelajar(
-    String username,
-    String password,
-  ) async {
+  Future<Map<String, dynamic>> loginPelajar(String username, String password) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/login-pelajar"),
