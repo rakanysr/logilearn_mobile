@@ -127,9 +127,12 @@ class _QuizScreenState extends State<QuizScreen> {
         'Loading questions for level ${widget.levelId} in section ${widget.sectionSlug}',
       );
 
+      // getSoalsByLevel akan otomatis check cache dulu sebelum fetch dari API
+      // Ini akan membuat loading lebih cepat jika soal sudah pernah di-load sebelumnya
       final result = await apiService.getSoalsByLevel(
         widget.sectionSlug,
         widget.levelId,
+        useCache: true, // Gunakan cache untuk loading yang lebih cepat
       );
 
       if (result['success']) {
@@ -300,10 +303,8 @@ class _QuizScreenState extends State<QuizScreen> {
       }
     }
 
-    
-    setState(() => _isLoading = true);
-    await _submitCurrentAnswer();
-    setState(() => _isLoading = false);
+    // Submit jawaban di background tanpa blocking UI (tidak perlu loading)
+    _submitCurrentAnswer();
 
     if (currentIndex < questions.length - 1) {
      
@@ -433,10 +434,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
                 Text(
-                  _errorMessage ??
-                      (questions.isEmpty
-                          ? 'Menyiapkan Quiz...'
-                          : 'Menyimpan Jawaban...'),
+                  _errorMessage ?? 'Menyiapkan Quiz...',
                 ),
               ],
             ),

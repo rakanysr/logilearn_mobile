@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
@@ -12,6 +13,47 @@ class ApiService {
   }
 
   final _storage = const FlutterSecureStorage();
+
+  // Cache helper untuk soal
+  String _getSoalCacheKey(String slugSection, int levelId) {
+    return 'soal_cache_${slugSection}_$levelId';
+  }
+
+  Future<void> _saveSoalToCache(
+    String slugSection,
+    int levelId,
+    dynamic soalData,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _getSoalCacheKey(slugSection, levelId);
+      final jsonString = jsonEncode(soalData);
+      await prefs.setString(key, jsonString);
+      print('✅ Soal cached untuk $slugSection level $levelId');
+    } catch (e) {
+      print('❌ Error saving soal to cache: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> _getSoalFromCache(
+    String slugSection,
+    int levelId,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _getSoalCacheKey(slugSection, levelId);
+      final jsonString = prefs.getString(key);
+      if (jsonString != null) {
+        final data = jsonDecode(jsonString);
+        print('✅ Soal loaded from cache untuk $slugSection level $levelId');
+        return {'success': true, 'data': data};
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error getting soal from cache: $e');
+      return null;
+    }
+  }
 
   // Headers helper
   Future<Map<String, String>> _getHeaders() async {
@@ -81,8 +123,19 @@ class ApiService {
 
   Future<Map<String, dynamic>> getSoalsByLevel(
     String slugSection,
-    int levelId,
-  ) async {
+    int levelId, {
+    bool useCache = true,
+    bool forceRefresh = false,
+  }) async {
+
+    if (useCache && !forceRefresh) {
+      final cachedData = await _getSoalFromCache(slugSection, levelId);
+      if (cachedData != null) {
+        return cachedData;
+      }
+    }
+
+
     final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId/soal');
     try {
       final headers = await _getHeaders();
@@ -90,6 +143,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+     
+        await _saveSoalToCache(slugSection, levelId, data);
         return {'success': true, 'data': data};
       } else {
         return {
@@ -98,6 +153,14 @@ class ApiService {
         };
       }
     } catch (e) {
+      // Jika error fetch dari API, coba load dari cache sebagai fallback
+      if (useCache) {
+        final cachedData = await _getSoalFromCache(slugSection, levelId);
+        if (cachedData != null) {
+          print('⚠️ API error, using cached data: $e');
+          return cachedData;
+        }
+      }
       return {'success': false, 'message': e.toString()};
     }
   }
