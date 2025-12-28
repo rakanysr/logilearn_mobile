@@ -853,7 +853,7 @@ graph TD
 |------|--------|
 | **Aplikasi** | LogiLearn Mobile Application |
 | **Versi** | 1.0.0 |
-| **Terakhir Diupdate** | 2024 |
+| **Terakhir Diupdate** | 2025 |
 | **Base URL** | `http://localhost:3030/api` |
 
 ---
