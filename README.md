@@ -112,7 +112,7 @@ Untuk dokumentasi API lengkap, lihat:
 
 | Item | Detail |
 |------|--------|
-| **Mata Kuliah** | Tugas Besar |
+| **Mata Kuliah** | Pemrograman Perangkat Bergerak |
 | **Versi** | 1.0.0 |
 | **Framework** | Flutter |
 | **Bahasa** | Dart |
