@@ -11,9 +11,7 @@ class EssayField extends StatelessWidget {
       maxLines: 5,
       decoration: InputDecoration(
         hintText: "Ketik jawaban kamu di sini",
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
       onChanged: onChanged,
     );

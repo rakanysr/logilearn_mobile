@@ -35,7 +35,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
   String _selectedSection = 'Section 1, Level 1';
   String _selectedTitle = 'LOGIKA DASAR';
   int _selectedSectionNumber = 1; // Track selected section number
-  int _currentBottomNavIndex = 1;
+  final int _currentBottomNavIndex = 1;
   bool _isLoading = true;
   List<Map<String, dynamic>> _soals = [];
   Map<String, dynamic>? _attemptData; // Store attempt data
@@ -63,7 +63,9 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
   }
 
   Future<void> _loadLevelData() async {
-    print('=== _loadLevelData called for Section $_selectedSectionNumber ===');
+    debugPrint(
+      '=== _loadLevelData called for Section $_selectedSectionNumber ===',
+    );
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -85,7 +87,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
         return;
       }
       final pelajarId = int.parse(pelajarIdStr);
-      print('=== Loading attempt data for pelajar: $pelajarId ===');
+      debugPrint('=== Loading attempt data for pelajar: $pelajarId ===');
 
       // 2. Fetch attempts for this student
       final attemptsResult = await apiService.getAttemptsByPelajarId(pelajarId);
@@ -103,27 +105,31 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       final attemptsResponse = attemptsResult['data'];
       List<dynamic> attemptsList = [];
 
-      print('DEBUG: attemptsResponse type: ${attemptsResponse.runtimeType}');
+      debugPrint(
+        'DEBUG: attemptsResponse type: ${attemptsResponse.runtimeType}',
+      );
 
       if (attemptsResponse is Map && attemptsResponse['payload'] is Map) {
         final payload = attemptsResponse['payload'] as Map;
-        print('DEBUG: payload keys: ${payload.keys.toList()}');
+        debugPrint('DEBUG: payload keys: ${payload.keys.toList()}');
         if (payload['datas'] is List) {
           attemptsList = payload['datas'] as List;
-          print('DEBUG: Successfully parsed ${attemptsList.length} attempts');
+          debugPrint(
+            'DEBUG: Successfully parsed ${attemptsList.length} attempts',
+          );
         } else {
-          print(
-            'ERROR: payload[\"datas\"] is not a List, type: ${payload['datas'].runtimeType}',
+          debugPrint(
+            'ERROR: payload["datas"] is not a List, type: ${payload['datas'].runtimeType}',
           );
         }
       } else if (attemptsResponse is List) {
         attemptsList = attemptsResponse;
-        print('DEBUG: Response is directly a List');
+        debugPrint('DEBUG: Response is directly a List');
       } else {
-        print('ERROR: Unexpected response type');
+        debugPrint('ERROR: Unexpected response type');
       }
 
-      print('Found ${attemptsList.length} total attempts');
+      debugPrint('Found ${attemptsList.length} total attempts');
 
       // Get all sections from API first to map section IDs correctly
       // Diambil sebelum pengecekan attempts agar bisa digunakan saat tidak ada attempt
@@ -159,12 +165,12 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
           });
         }
       } catch (e) {
-        print('Error fetching sections: $e');
+        debugPrint('Error fetching sections: $e');
       }
 
       // Jika tidak ada attempt dan widget.sectionNumber adalah 1, tetap tampilkan Section 1
       if (attemptsList.isEmpty) {
-        print('WARNING: No attempts found for this student');
+        debugPrint('WARNING: No attempts found for this student');
         if (widget.sectionNumber == 1) {
           // Ambil data Section 1 dari sections list jika ada
           if (sectionsList.isNotEmpty) {
@@ -203,13 +209,13 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       }
 
       // Cari attempt dari section yang dipilih berdasarkan _selectedSectionNumber
-      print(
+      debugPrint(
         '=== Searching for attempts in Section $_selectedSectionNumber ===',
       );
 
       Map<String, dynamic>? attemptMap;
       if (sectionsList.isEmpty) {
-        print('✗ ERROR: sectionsList is empty, cannot filter by section');
+        debugPrint('✗ ERROR: sectionsList is empty, cannot filter by section');
         setState(() {
           _attemptData = null;
           _soals = [];
@@ -226,20 +232,20 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
         );
         final selectedSectionId = selectedSection['id'];
         final selectedSectionName = selectedSection['nama'] ?? 'Unknown';
-        print(
+        debugPrint(
           'Selected section ID: $selectedSectionId (Section $_selectedSectionNumber)',
         );
-        print('Selected section name: $selectedSectionName');
-        print('Total sections in list: ${sectionsList.length}');
+        debugPrint('Selected section name: $selectedSectionName');
+        debugPrint('Total sections in list: ${sectionsList.length}');
         for (var s in sectionsList) {
-          print(
+          debugPrint(
             '  - Section ${s['sectionNumber']}: ID=${s['id']}, Name=${s['nama']}',
           );
         }
 
         // Validate that we found the correct section
         if (selectedSection['sectionNumber'] != _selectedSectionNumber) {
-          print('✗ ERROR: Section number mismatch in selectedSection');
+          debugPrint('✗ ERROR: Section number mismatch in selectedSection');
           setState(() {
             _attemptData = null;
             _soals = [];
@@ -250,7 +256,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
         }
 
         // Cari attempt dari section yang dipilih
-        print('Searching through ${attemptsList.length} attempts...');
+        debugPrint('Searching through ${attemptsList.length} attempts...');
         for (var attempt in attemptsList) {
           final attemptData = attempt is Map<String, dynamic>
               ? attempt
@@ -258,7 +264,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
           final levelData = attemptData['levels'];
           final sectionData = levelData?['sections'];
           if (sectionData == null) {
-            print(
+            debugPrint(
               '  Attempt ID: ${attemptData['id']}, No section data found - SKIPPING',
             );
             continue;
@@ -277,18 +283,18 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                     ? int.tryParse(selectedSectionId.toString())
                     : null);
 
-          print(
+          debugPrint(
             '  Attempt ID: ${attemptData['id']}, Section ID: $attemptSectionIdInt (looking for: $selectedSectionIdInt)',
           );
 
           // First check: section ID must match
           if (attemptSectionIdInt == null || selectedSectionIdInt == null) {
-            print('    ✗ Section ID cannot be parsed - SKIPPING');
+            debugPrint('    ✗ Section ID cannot be parsed - SKIPPING');
             continue;
           }
 
           if (attemptSectionIdInt != selectedSectionIdInt) {
-            print('    ✗ Section ID does not match - SKIPPING');
+            debugPrint('    ✗ Section ID does not match - SKIPPING');
             continue;
           }
 
@@ -305,12 +311,12 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
             final verifiedSectionNumber =
                 verifiedSection['sectionNumber'] as int;
 
-            print(
+            debugPrint(
               '    Verified section number: $verifiedSectionNumber (looking for: $_selectedSectionNumber)',
             );
 
             if (verifiedSectionNumber != _selectedSectionNumber) {
-              print(
+              debugPrint(
                 '    ✗ Section number mismatch: Attempt is from Section $verifiedSectionNumber, looking for Section $_selectedSectionNumber - SKIPPING',
               );
               continue;
@@ -321,22 +327,24 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
             final selectedSectionName = selectedSection['nama'] ?? '';
 
             // All checks passed - but add extra logging to verify
-            print(
+            debugPrint(
               '    ✓ ALL CHECKS PASSED for Attempt ID: ${attemptData['id']}',
             );
-            print('    ✓ Attempt Section ID: $attemptSectionIdInt');
-            print('    ✓ Attempt Section Number: $verifiedSectionNumber');
-            print('    ✓ Attempt Section Name: $attemptSectionName');
-            print('    ✓ Selected Section ID: $selectedSectionIdInt');
-            print('    ✓ Selected Section Number: $_selectedSectionNumber');
-            print('    ✓ Selected Section Name: $selectedSectionName');
+            debugPrint('    ✓ Attempt Section ID: $attemptSectionIdInt');
+            debugPrint('    ✓ Attempt Section Number: $verifiedSectionNumber');
+            debugPrint('    ✓ Attempt Section Name: $attemptSectionName');
+            debugPrint('    ✓ Selected Section ID: $selectedSectionIdInt');
+            debugPrint(
+              '    ✓ Selected Section Number: $_selectedSectionNumber',
+            );
+            debugPrint('    ✓ Selected Section Name: $selectedSectionName');
 
             // Optional validation: log if section name doesn't match (but don't skip)
             if (attemptSectionName.isNotEmpty &&
                 selectedSectionName.isNotEmpty &&
                 attemptSectionName.toUpperCase().trim() !=
                     selectedSectionName.toUpperCase().trim()) {
-              print(
+              debugPrint(
                 '    ⚠ Section name mismatch: Attempt section "$attemptSectionName" vs selected section "$selectedSectionName" - But IDs match, so continuing',
               );
             }
@@ -355,7 +363,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                       ? int.tryParse(_currentLevelId.toString())
                       : null);
 
-            print(
+            debugPrint(
               '    Checking level ID: Attempt level=$attemptLevelIdInt, Current level=$currentLevelIdInt',
             );
 
@@ -364,7 +372,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                 attemptLevelIdInt != null &&
                 currentLevelIdInt != null &&
                 attemptLevelIdInt == currentLevelIdInt) {
-              print('    ✓ EXACT LEVEL MATCH - Using this attempt');
+              debugPrint('    ✓ EXACT LEVEL MATCH - Using this attempt');
               attemptMap = attemptData;
               break;
             }
@@ -372,19 +380,21 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
             // Otherwise, if we don't have a match yet, use this attempt from the correct section
             // (we'll keep looking for an exact level match, but this is our fallback)
             if (attemptMap == null) {
-              print(
+              debugPrint(
                 '    ✓ Section match - Will use this if no exact level match found',
               );
               attemptMap = attemptData;
               // Don't break - keep looking for exact level match
             }
           } catch (e) {
-            print('    ✗ Could not verify section for attempt: $e - SKIPPING');
+            debugPrint(
+              '    ✗ Could not verify section for attempt: $e - SKIPPING',
+            );
             continue;
           }
         }
       } catch (e) {
-        print('✗ ERROR finding section: $e');
+        debugPrint('✗ ERROR finding section: $e');
         setState(() {
           _attemptData = null;
           _soals = [];
@@ -396,11 +406,11 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
 
       // Log the result of the attempt search
       if (attemptMap != null) {
-        print(
+        debugPrint(
           '✓✓✓ FOUND ATTEMPT: ID ${attemptMap['id']} from Section $_selectedSectionNumber, Level ${attemptMap['id_level']}',
         );
       } else {
-        print(
+        debugPrint(
           '✗ No matching attempt found after searching all ${attemptsList.length} attempts',
         );
       }
@@ -408,7 +418,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       // Jika tidak ditemukan attempt dari section yang dipilih, kosongkan data
       if (attemptMap == null) {
         // Tidak ada attempt untuk section ini
-        print(
+        debugPrint(
           '✗ No attempt found for Section $_selectedSectionNumber - Clearing all data',
         );
         setState(() {
@@ -426,7 +436,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       final finalSectionData = finalLevelData?['sections'];
 
       if (finalSectionData == null) {
-        print('✗ FINAL CHECK FAILED: Attempt has no section data');
+        debugPrint('✗ FINAL CHECK FAILED: Attempt has no section data');
         setState(() {
           _attemptData = null;
           _soals = [];
@@ -442,7 +452,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
           : (finalSectionId is String ? int.tryParse(finalSectionId) : null);
 
       if (finalSectionIdInt == null) {
-        print('✗ FINAL CHECK FAILED: Cannot parse attempt section ID');
+        debugPrint('✗ FINAL CHECK FAILED: Cannot parse attempt section ID');
         setState(() {
           _attemptData = null;
           _soals = [];
@@ -476,7 +486,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
 
         // Verify both section ID and section number match
         if (finalSectionIdInt != finalSelectedSectionIdInt) {
-          print(
+          debugPrint(
             '✗ FINAL CHECK FAILED: Attempt section ID ($finalSectionIdInt) does not match selected section ID ($finalSelectedSectionIdInt)',
           );
           setState(() {
@@ -489,7 +499,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
         }
 
         if (attemptSectionNumber != _selectedSectionNumber) {
-          print(
+          debugPrint(
             '✗ FINAL CHECK FAILED: Attempt section number ($attemptSectionNumber) does not match selected section number ($_selectedSectionNumber)',
           );
           setState(() {
@@ -508,22 +518,24 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
             finalSelectedSectionName.isNotEmpty &&
             attemptSectionName.toUpperCase().trim() !=
                 finalSelectedSectionName.toUpperCase().trim()) {
-          print(
+          debugPrint(
             '⚠ FINAL CHECK WARNING: Attempt section name "$attemptSectionName" does not match selected section name "$finalSelectedSectionName" - But IDs match, so continuing',
           );
         }
 
-        print(
+        debugPrint(
           '✓ FINAL CHECK PASSED: Attempt verified for Section $_selectedSectionNumber',
         );
-        print('  Final Attempt ID: ${attemptData['id']}');
-        print('  Final Attempt Section ID: $finalSectionIdInt');
-        print('  Final Attempt Section Number: $attemptSectionNumber');
-        print('  Final Selected Section ID: $finalSelectedSectionIdInt');
-        print('  Final Selected Section Number: $_selectedSectionNumber');
-        print('  Final Section Name: ${finalSectionData['nama'] ?? 'N/A'}');
+        debugPrint('  Final Attempt ID: ${attemptData['id']}');
+        debugPrint('  Final Attempt Section ID: $finalSectionIdInt');
+        debugPrint('  Final Attempt Section Number: $attemptSectionNumber');
+        debugPrint('  Final Selected Section ID: $finalSelectedSectionIdInt');
+        debugPrint('  Final Selected Section Number: $_selectedSectionNumber');
+        debugPrint(
+          '  Final Section Name: ${finalSectionData['nama'] ?? 'N/A'}',
+        );
       } catch (e) {
-        print('✗ FINAL CHECK ERROR: $e');
+        debugPrint('✗ FINAL CHECK ERROR: $e');
         setState(() {
           _attemptData = null;
           _soals = [];
@@ -533,26 +545,26 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
         return;
       }
 
-      print(
+      debugPrint(
         'Using attempt ID: ${attemptData['id']} for level: ${attemptData['id_level']}',
       );
 
       // Show info if attempt is from different level
       if (attemptData['id_level'] != widget.levelId) {
-        print(
+        debugPrint(
           'INFO: Showing attempt from level ${attemptData['id_level']} (current page is level ${widget.levelId})',
         );
       }
 
       // 4. Extract soals from attempt answers instead of fetching separately
       // This handles cases where attempt level doesn't match actual question levels
-      print('Extracting soals from attempt answers...');
+      debugPrint('Extracting soals from attempt answers...');
 
       try {
         final jawabanPGs = attemptData['jawaban_pgs'] as List? ?? [];
         final jawabanEsais = attemptData['jawaban_esais'] as List? ?? [];
 
-        print(
+        debugPrint(
           'Found ${jawabanPGs.length} PG answers and ${jawabanEsais.length} essay answers',
         );
 
@@ -626,11 +638,11 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                 } else {
                   levelName = 'Level 1';
                 }
-                print(
+                debugPrint(
                   'Using Section $_selectedSectionNumber from API: $sectionName, $levelName',
                 );
               } catch (e) {
-                print(
+                debugPrint(
                   'Section $_selectedSectionNumber not found in list, using attempt data',
                 );
                 // Jika section tidak ditemukan, gunakan data dari attempt
@@ -652,10 +664,12 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
             _selectedSection = 'Section $sectionNumber, $levelName';
             _selectedTitle = sectionName.toUpperCase();
             _isLoading = false;
-            print('Final: $_selectedSection, Title: $_selectedTitle');
+            debugPrint('Final: $_selectedSection, Title: $_selectedTitle');
           });
-          print('Extracted ${_soals.length} unique soals from attempt answers');
-          print('Section: $_selectedSection, Title: $_selectedTitle');
+          debugPrint(
+            'Extracted ${_soals.length} unique soals from attempt answers',
+          );
+          debugPrint('Section: $_selectedSection, Title: $_selectedTitle');
         } else {
           setState(() {
             _errorMessage = 'Tidak ada soal ditemukan dalam attempt ini';
@@ -663,7 +677,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
           });
         }
       } catch (e) {
-        print('Error extracting soals from attempt: $e');
+        debugPrint('Error extracting soals from attempt: $e');
         setState(() {
           _errorMessage = 'Error memproses data attempt: ${e.toString()}';
           _isLoading = false;
@@ -674,8 +688,8 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
         _errorMessage = 'Error: ${e.toString()}';
         _isLoading = false;
       });
-      print('Exception in _loadLevelData: $e');
-      print('Stack trace: $stackTrace');
+      debugPrint('Exception in _loadLevelData: $e');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 
@@ -757,20 +771,20 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
           if (_currentLevelIndex == -1) _currentLevelIndex = 0;
         });
 
-        print(
+        debugPrint(
           'Fetched ${_levelsList.length} levels for section $_selectedSectionNumber',
         );
-        print('Current level index: $_currentLevelIndex');
+        debugPrint('Current level index: $_currentLevelIndex');
       }
     } catch (e) {
-      print('Error fetching levels: $e');
+      debugPrint('Error fetching levels: $e');
     }
   }
 
   // Navigate to previous level
   void _previousLevel() async {
     if (_levelsList.isEmpty || _currentLevelIndex <= 0) {
-      print('Cannot navigate to previous level');
+      debugPrint('Cannot navigate to previous level');
       return;
     }
 
@@ -788,7 +802,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       _errorMessage = null;
     });
 
-    print(
+    debugPrint(
       'Navigating to previous level: ${previousLevel['nama']} (ID: ${previousLevel['id']})',
     );
 
@@ -799,7 +813,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
   // Navigate to next level
   void _nextLevel() async {
     if (_levelsList.isEmpty || _currentLevelIndex >= _levelsList.length - 1) {
-      print('Cannot navigate to next level');
+      debugPrint('Cannot navigate to next level');
       return;
     }
 
@@ -817,7 +831,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       _errorMessage = null;
     });
 
-    print(
+    debugPrint(
       'Navigating to next level: ${nextLevel['nama']} (ID: ${nextLevel['id']})',
     );
 
@@ -918,7 +932,9 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                   });
                 },
                 onSelectSection: (section, title, number) {
-                  print('=== Section selected: $number, Title: $title ===');
+                  debugPrint(
+                    '=== Section selected: $number, Title: $title ===',
+                  );
                   setState(() {
                     _selectedSection = section;
                     _selectedTitle = title;
@@ -1083,69 +1099,5 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
         bottomNavigationBar: BottomNavBar(currentIndex: _currentBottomNavIndex),
       ),
     );
-  }
-
-  void _nextSection() async {
-    // Gunakan _selectedSectionNumber untuk navigasi yang benar
-    if (_sectionsList.isEmpty) {
-      print('Sections list is empty, fetching sections...');
-      // Jika sections list kosong, ambil dari API terlebih dahulu
-      try {
-        final apiService = ApiService();
-        final sectionsResult = await apiService.getSections();
-        if (sectionsResult['success']) {
-          final sectionsResponse = sectionsResult['data'];
-          List<dynamic> sectionsData = [];
-
-          if (sectionsResponse is Map &&
-              sectionsResponse['payload'] is Map &&
-              sectionsResponse['payload']['datas'] is List) {
-            sectionsData = sectionsResponse['payload']['datas'];
-          } else if (sectionsResponse is List) {
-            sectionsData = sectionsResponse;
-          }
-
-          List<Map<String, dynamic>> tempSectionsList = [];
-          for (var i = 0; i < sectionsData.length; i++) {
-            final section = sectionsData[i] is Map<String, dynamic>
-                ? sectionsData[i]
-                : Map<String, dynamic>.from(sectionsData[i] as Map);
-            tempSectionsList.add({
-              'id': section['id'],
-              'nama': section['nama'] ?? '',
-              'slug': section['slug'] ?? 'section-${i + 1}',
-              'sectionNumber': i + 1,
-            });
-          }
-          setState(() {
-            _sectionsList = tempSectionsList;
-          });
-        } else {
-          print('Failed to fetch sections, cannot navigate');
-          return;
-        }
-      } catch (e) {
-        print('Error fetching sections for navigation: $e');
-        return;
-      }
-    }
-
-    // Cari section berikutnya berdasarkan section number
-    final currentIndex = _selectedSectionNumber - 1;
-    final nextIndex = (currentIndex + 1) % _sectionsList.length;
-    final nextSection = _sectionsList[nextIndex];
-
-    setState(() {
-      _selectedSectionNumber = nextSection['sectionNumber'] as int;
-      _selectedSection = 'Section ${_selectedSectionNumber}, Level 1';
-      _selectedTitle = (nextSection['nama'] ?? 'LOGIKA').toUpperCase();
-      // Clear old data immediately when section changes
-      _attemptData = null;
-      _soals = [];
-      _errorMessage = null;
-    });
-
-    // Reload data untuk section yang baru
-    _loadLevelData();
   }
 }

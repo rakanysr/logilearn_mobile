@@ -72,12 +72,13 @@ class _SectionDropdownButtonState extends State<SectionDropdownButton> {
           final item = sectionsList[i];
 
           Color sectionColor;
-          if (i % 3 == 0)
+          if (i % 3 == 0) {
             sectionColor = const Color(0xFF2F80ED);
-          else if (i % 3 == 1)
+          } else if (i % 3 == 1) {
             sectionColor = const Color(0xFF2D9CDB);
-          else
+          } else {
             sectionColor = const Color(0xFF27AE60);
+          }
 
           parsedSections.add({
             'section': 'SECTION ${i + 1}',
@@ -120,7 +121,7 @@ class _SectionDropdownButtonState extends State<SectionDropdownButton> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -135,7 +136,7 @@ class _SectionDropdownButtonState extends State<SectionDropdownButton> {
                         Text(
                           widget.selectedSection.toUpperCase(),
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             letterSpacing: 0.5,
@@ -162,7 +163,7 @@ class _SectionDropdownButtonState extends State<SectionDropdownButton> {
                   Container(
                     width: 1,
                     height: 30,
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     margin: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                   // Chevron icon
@@ -192,7 +193,7 @@ class _SectionDropdownButtonState extends State<SectionDropdownButton> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -266,7 +267,7 @@ class _DropdownItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),

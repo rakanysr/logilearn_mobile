@@ -27,7 +27,7 @@ class QuestionCardWithFeedback extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -99,10 +99,7 @@ class QuestionCardWithFeedback extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey[300]!,
-                width: 1,
-              ),
+              border: Border.all(color: Colors.grey[300]!, width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,4 +130,3 @@ class QuestionCardWithFeedback extends StatelessWidget {
     );
   }
 }
-

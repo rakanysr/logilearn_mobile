@@ -137,7 +137,7 @@ class HeaderSection extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: _getSectionColor(
                             sectionNumber,
-                          ).withOpacity(0.4),
+                          ).withValues(alpha: 0.4),
                           shape: BoxShape.rectangle,
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -154,7 +154,7 @@ class HeaderSection extends StatelessWidget {
                           BoxShadow(
                             color: _getSectionColor(
                               sectionNumber,
-                            ).withOpacity(0.3),
+                            ).withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),

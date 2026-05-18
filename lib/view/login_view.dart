@@ -16,11 +16,14 @@ class _LoginViewState extends State<LoginView> {
   final _passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
   final AuthService _authService = AuthService();
   final _storage = const FlutterSecureStorage();
 
-  void _handleLogin() async {
+  Future<void> _handleLogin() async {
+    if (_isLoading) return;
+
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -34,13 +37,19 @@ class _LoginViewState extends State<LoginView> {
       return;
     }
 
+    setState(() => _isLoading = true);
     final result = await _authService.loginPelajar(username, password);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
 
     if (result['statusCode'] == 200) {
       final nama = await _storage.read(key: "nama_pelajar");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("${result['message']}, selamat datang ${nama}"),
+          content: Text(
+            "${result['message']}, selamat datang ${nama ?? 'Teman'}",
+          ),
           backgroundColor: const Color(0xFF2977FF),
         ),
       );
@@ -197,9 +206,7 @@ class _LoginViewState extends State<LoginView> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () {
-                          _handleLogin();
-                        },
+                        onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2977FF),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -207,14 +214,23 @@ class _LoginViewState extends State<LoginView> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'LANJUTKAN',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'LANJUTKAN',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 24),

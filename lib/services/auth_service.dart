@@ -61,7 +61,10 @@ class AuthService {
     return null;
   }
 
-  Future<Map<String, dynamic>> loginPelajar(String username, String password) async {
+  Future<Map<String, dynamic>> loginPelajar(
+    String username,
+    String password,
+  ) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/login-pelajar"),
@@ -69,8 +72,8 @@ class AuthService {
         body: jsonEncode({"username": username, "password": password}),
       );
 
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       final responseData = jsonDecode(response.body);
 
@@ -98,7 +101,7 @@ class AuthService {
         'data': responseData,
       };
     } catch (e) {
-      print('Error Login: $e');
+      debugPrint('Error Login: $e');
       return {
         'success': false,
         'statusCode': 0,
@@ -138,8 +141,8 @@ class AuthService {
         }),
       );
 
-      print('🔵 Status Code: ${response.statusCode}');
-      print('🔵 Response Body: ${response.body}');
+      debugPrint('🔵 Status Code: ${response.statusCode}');
+      debugPrint('🔵 Response Body: ${response.body}');
 
       final responseData = jsonDecode(response.body);
 
@@ -150,7 +153,7 @@ class AuthService {
         'data': responseData,
       };
     } catch (e) {
-      print('🔴 Error: $e');
+      debugPrint('🔴 Error: $e');
       return {
         'success': false,
         'statusCode': 0,

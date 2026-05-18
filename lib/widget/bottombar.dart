@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:logilearn/view/home_view.dart';
-import 'package:logilearn/view/review_attempt_view.dart';
 import 'package:logilearn/view/account_view.dart';
+import 'package:logilearn/view/attempt_history_view.dart';
+import 'package:logilearn/view/home_view.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -10,7 +10,7 @@ class BottomNavBar extends StatelessWidget {
   const BottomNavBar({super.key, required this.currentIndex, this.onTap});
 
   void _handleTap(BuildContext context, int index) {
-    if (index == currentIndex) return; // biar gak reload page yang sama
+    if (index == currentIndex) return;
 
     switch (index) {
       case 0:
@@ -20,19 +20,9 @@ class BottomNavBar extends StatelessWidget {
         );
         break;
       case 1:
-        // Navigate to ReviewAttemptView with default values
-        // In a real scenario, you might want to show a list of attempts instead
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const ReviewAttemptView(
-              sectionSlug: 'section-1',
-              levelId: 1,
-              sectionTitle: 'LOGIKA DASAR',
-              sectionNumber: 1,
-              levelNumber: 1,
-            ),
-          ),
+          MaterialPageRoute(builder: (context) => const AttemptHistoryView()),
         );
         break;
       case 2:
@@ -51,7 +41,7 @@ class BottomNavBar extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -60,9 +50,7 @@ class BottomNavBar extends StatelessWidget {
       child: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: (index) {
-          if (onTap != null) {
-            onTap!(index);
-          }
+          onTap?.call(index);
           _handleTap(context, index);
         },
         type: BottomNavigationBarType.fixed,

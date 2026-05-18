@@ -48,12 +48,12 @@ class _QuizScreenState extends State<QuizScreen> {
   int score = 0;
   List<Question> questions = [];
   bool _isLoading = true;
+  bool _isSubmitting = false;
   String? _errorMessage;
-  Map<int, int> _userAnswers =
-      {}; 
-  Map<int, String> _userEssayAnswers = {}; 
+  final Map<int, int> _userAnswers = {};
+  final Map<int, String> _userEssayAnswers = {};
   TextEditingController? _essayController;
-  int? _currentAttemptId; 
+  int? _currentAttemptId;
 
   @override
   void initState() {
@@ -62,11 +62,11 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _initQuiz() async {
-    print('');
-    print('========================================');
-    print('🚀 _initQuiz STARTED for level ${widget.levelId}');
-    print('========================================');
-    print('');
+    debugPrint('');
+    debugPrint('========================================');
+    debugPrint('🚀 _initQuiz STARTED for level ${widget.levelId}');
+    debugPrint('========================================');
+    debugPrint('');
 
     setState(() {
       _isLoading = true;
@@ -76,54 +76,7 @@ class _QuizScreenState extends State<QuizScreen> {
     try {
       final apiService = ApiService();
 
-      print('');
-      print('>>> STEP 1: Creating Attempt <<<');
-      print('📝 Creating attempt for level ${widget.levelId}');
-
-      final attemptRes = await apiService.createAttempt(widget.levelId);
-
-      print('📥 Attempt response received: $attemptRes');
-
-      if (!attemptRes['success']) {
-        print('❌ Attempt creation failed: ${attemptRes['message']}');
-        throw Exception(attemptRes['message']);
-      }
-
-    
-      final attemptData = attemptRes['data'];
-      print('DEBUG: Full attempt response: $attemptData');
-
-      if (attemptData is Map) {
-
-        if (attemptData['payload'] is Map &&
-            attemptData['payload']['datas'] is Map &&
-            attemptData['payload']['datas']['id'] != null) {
-          _currentAttemptId = attemptData['payload']['datas']['id'];
-          print(
-            'DEBUG: Got attempt ID from payload.datas.id: $_currentAttemptId',
-          );
-        }
-   
-        else if (attemptData['id'] != null) {
-          _currentAttemptId = attemptData['id'];
-          print('DEBUG: Got attempt ID from direct id: $_currentAttemptId');
-        }
-    
-        else if (attemptData['data'] is Map &&
-            attemptData['data']['id'] != null) {
-          _currentAttemptId = attemptData['data']['id'];
-          print('DEBUG: Got attempt ID from data.id: $_currentAttemptId');
-        }
-      }
-
-      if (_currentAttemptId == null) {
-        print('ERROR: Could not parse attempt ID. Response: $attemptData');
-        throw Exception('Failed to get attempt ID from response');
-      }
-      print('✓ Attempt created successfully with ID: $_currentAttemptId');
-
-   
-      print(
+      debugPrint(
         'Loading questions for level ${widget.levelId} in section ${widget.sectionSlug}',
       );
 
@@ -139,7 +92,6 @@ class _QuizScreenState extends State<QuizScreen> {
         final fullResponse = result['data'];
         List<dynamic> soalsList = [];
 
-   
         if (fullResponse is Map && fullResponse['payload'] is Map) {
           final payload = fullResponse['payload'] as Map;
           if (payload['datas'] is List) {
@@ -161,7 +113,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       ? Map<String, dynamic>.from(soal)
                       : <String, dynamic>{});
 
-            final id = soalMap['id']; 
+            final id = soalMap['id'];
             final tipe = soalMap['tipe'] as String? ?? 'pg';
             final textSoal = soalMap['text_soal'] as String? ?? '';
             final isEssay = tipe == 'esai';
@@ -169,7 +121,6 @@ class _QuizScreenState extends State<QuizScreen> {
             if (isEssay) {
               return Question(id: id, question: textSoal, isEssay: true);
             } else {
-            
               List<dynamic> opsisList = [];
               if (soalMap['opsis'] is List) {
                 opsisList = soalMap['opsis'] as List;
@@ -194,7 +145,6 @@ class _QuizScreenState extends State<QuizScreen> {
                 options.add(text);
                 optionIds.add(optId);
 
-              
                 if ((opsiMap['is_correct'] == true) ||
                     (opsiMap['is_benar'] == true)) {
                   correctIndex = i;
@@ -216,7 +166,7 @@ class _QuizScreenState extends State<QuizScreen> {
             questions = parsedQuestions;
             _isLoading = false;
           });
-          print('Loaded ${questions.length} questions');
+          debugPrint('Loaded ${questions.length} questions');
         } else {
           setState(() {
             _errorMessage = 'Tidak ada soal ditemukan untuk level ini';
@@ -234,15 +184,58 @@ class _QuizScreenState extends State<QuizScreen> {
         _errorMessage = 'Error: ${e.toString()}';
         _isLoading = false;
       });
-      print('Exception in _initQuiz: $e');
+      debugPrint('Exception in _initQuiz: $e');
     }
   }
 
-  Future<void> _submitCurrentAnswer() async {
-    if (_currentAttemptId == null) {
-      print('ERROR: Cannot submit answer - _currentAttemptId is null');
-      return;
+  int? _readAttemptId(dynamic attemptData) {
+    if (attemptData is! Map) return null;
+    final payload = attemptData['payload'];
+    final datas = payload is Map ? payload['datas'] : null;
+    final data = attemptData['data'];
+    final rawId = datas is Map
+        ? datas['id']
+        : attemptData['id'] ?? (data is Map ? data['id'] : null);
+
+    if (rawId is int) return rawId;
+    return int.tryParse(rawId?.toString() ?? '');
+  }
+
+  Future<bool> _ensureAttemptCreated() async {
+    if (_currentAttemptId != null) return true;
+
+    final apiService = ApiService();
+    final attemptRes = await apiService.createAttempt(widget.levelId);
+
+    if (!attemptRes['success']) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(attemptRes['message'] ?? 'Gagal memulai attempt'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
     }
+
+    _currentAttemptId = _readAttemptId(attemptRes['data']);
+    if (_currentAttemptId == null) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal membaca ID attempt dari server'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<bool> _submitCurrentAnswer() async {
+    final attemptReady = await _ensureAttemptCreated();
+    if (!attemptReady || _currentAttemptId == null) return false;
 
     final currentQ = questions[currentIndex];
     final apiService = ApiService();
@@ -251,49 +244,77 @@ class _QuizScreenState extends State<QuizScreen> {
       if (currentQ.isEssay) {
         final answer = essayAnswer;
         if (answer.isNotEmpty) {
-          print('Submitting essay answer for question ${currentQ.id}...');
+          debugPrint('Submitting essay answer for question ${currentQ.id}...');
           final result = await apiService.submitJawabanEsai(
             _currentAttemptId!,
             currentQ.id,
             answer,
           );
-          print('Essay submission result: $result');
+          debugPrint('Essay submission result: $result');
           if (!result['success']) {
-            print('ERROR: Essay submission failed: ${result['message']}');
+            debugPrint('ERROR: Essay submission failed: ${result['message']}');
           }
         } else {
-          print('Skipping empty essay answer');
+          debugPrint('Skipping empty essay answer');
+          return false;
         }
       } else {
-      
         if (selectedIndex != null && currentQ.optionIds != null) {
           final optId = currentQ.optionIds![selectedIndex!];
-          print(
+          debugPrint(
             'Submitting PG answer for question ${currentQ.id}, option $optId...',
           );
           final result = await apiService.submitJawabanPG(
             _currentAttemptId!,
             optId,
           );
-          print('PG submission result: $result');
+          debugPrint('PG submission result: $result');
           if (!result['success']) {
-            print('ERROR: PG submission failed: ${result['message']}');
+            debugPrint('ERROR: PG submission failed: ${result['message']}');
           }
         } else {
-          print('Skipping PG answer - no option selected or optionIds missing');
+          debugPrint(
+            'Skipping PG answer - no option selected or optionIds missing',
+          );
+          return false;
         }
       }
+      return true;
     } catch (e) {
-      print('EXCEPTION in _submitCurrentAnswer: $e');
+      debugPrint('EXCEPTION in _submitCurrentAnswer: $e');
+      return false;
     }
   }
 
+  bool _hasAnswered(Question question) {
+    if (question.isEssay) return essayAnswer.trim().isNotEmpty;
+    return selectedIndex != null || _userAnswers[currentIndex] != null;
+  }
+
+  void _showAnswerRequiredMessage(Question question) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          question.isEssay
+              ? 'Tulis jawaban terlebih dahulu'
+              : 'Pilih salah satu jawaban terlebih dahulu',
+        ),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
   Future<void> nextQuestion() async {
-    if (questions.isEmpty) return;
+    if (questions.isEmpty || _isSubmitting) return;
 
     final currentQ = questions[currentIndex];
+    if (!_hasAnswered(currentQ)) {
+      _showAnswerRequiredMessage(currentQ);
+      return;
+    }
 
-    
+    setState(() => _isSubmitting = true);
+
     if (currentQ.isEssay) {
       _userEssayAnswers[currentIndex] = essayAnswer;
     } else {
@@ -303,14 +324,24 @@ class _QuizScreenState extends State<QuizScreen> {
       }
     }
 
-    // Submit jawaban di background tanpa blocking UI (tidak perlu loading)
-    _submitCurrentAnswer();
+    final submitted = await _submitCurrentAnswer();
+    if (!mounted) return;
+    if (!submitted) {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Jawaban belum berhasil dikirim. Coba lagi.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     if (currentIndex < questions.length - 1) {
-     
       setState(() {
+        _isSubmitting = false;
         currentIndex++;
-       
+
         if (_userAnswers.containsKey(currentIndex)) {
           final savedIndex = _userAnswers[currentIndex];
           selectedIndex = savedIndex == -1 ? null : savedIndex;
@@ -318,24 +349,23 @@ class _QuizScreenState extends State<QuizScreen> {
           selectedIndex = null;
         }
         essayAnswer = _userEssayAnswers[currentIndex] ?? "";
-        
+
         _updateEssayController();
       });
     } else {
- 
       setState(() => _isLoading = true);
       double? finalScore;
 
       try {
         if (_currentAttemptId != null) {
           final apiService = ApiService();
- 
+
           final res = await apiService.submitAttempt(_currentAttemptId!);
-          print('Finish Quiz - Submit Attempt Result: $res');
+          debugPrint('Finish Quiz - Submit Attempt Result: $res');
 
           if (res['success']) {
             final data = res['data'];
-        
+
             dynamic rawScore;
             if (data is Map) {
               if (data['payload'] != null && data['payload']['datas'] != null) {
@@ -349,17 +379,19 @@ class _QuizScreenState extends State<QuizScreen> {
 
             if (rawScore != null) {
               finalScore = double.tryParse(rawScore.toString());
-              print('Parsed Final Score: $finalScore');
+              debugPrint('Parsed Final Score: $finalScore');
             }
           }
         }
       } catch (e) {
-        print('Error fetching final score: $e');
+        debugPrint('Error fetching final score: $e');
       }
 
-      setState(() => _isLoading = false);
-
       if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _isSubmitting = false;
+      });
 
       Navigator.pushReplacement(
         context,
@@ -408,8 +440,10 @@ class _QuizScreenState extends State<QuizScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onChanged: (val) {
-          essayAnswer = val;
-          _userEssayAnswers[currentIndex] = val;
+          setState(() {
+            essayAnswer = val;
+            _userEssayAnswers[currentIndex] = val;
+          });
         },
       ),
     );
@@ -423,7 +457,6 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     if (_isLoading) {
       return Scaffold(
         body: SafeArea(
@@ -433,9 +466,7 @@ class _QuizScreenState extends State<QuizScreen> {
               children: [
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
-                Text(
-                  _errorMessage ?? 'Menyiapkan Quiz...',
-                ),
+                Text(_errorMessage ?? 'Menyiapkan Quiz...'),
               ],
             ),
           ),
@@ -482,7 +513,6 @@ class _QuizScreenState extends State<QuizScreen> {
     final question = questions[currentIndex];
     final progress = (currentIndex + 1) / questions.length;
 
-
     if (question.isEssay && _essayController == null) {
       _updateEssayController();
     }
@@ -491,6 +521,7 @@ class _QuizScreenState extends State<QuizScreen> {
         !question.isEssay && _userAnswers.containsKey(currentIndex)
         ? (_userAnswers[currentIndex] == -1 ? null : _userAnswers[currentIndex])
         : selectedIndex;
+    final canContinue = _hasAnswered(question) && !_isSubmitting;
 
     return Scaffold(
       body: SafeArea(
@@ -572,7 +603,7 @@ class _QuizScreenState extends State<QuizScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: nextQuestion,
+                  onPressed: canContinue ? nextQuestion : null,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -580,14 +611,25 @@ class _QuizScreenState extends State<QuizScreen> {
                     ),
                     backgroundColor: Colors.blueAccent,
                   ),
-                  child: Text(
-                    currentIndex == questions.length - 1 ? "SELESAI" : "LANJUT",
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          currentIndex == questions.length - 1
+                              ? "SELESAI"
+                              : "LANJUT",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
             ],

@@ -7,10 +7,11 @@ class StartupView extends StatefulWidget {
   const StartupView({super.key});
 
   @override
-  _StartupViewState createState() => _StartupViewState();
+  State<StartupView> createState() => _StartupViewState();
 }
 
-class _StartupViewState extends State<StartupView> with SingleTickerProviderStateMixin {
+class _StartupViewState extends State<StartupView>
+    with SingleTickerProviderStateMixin {
   final Color _backgroundColor = const Color(0xFF2977FF);
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
@@ -30,9 +31,10 @@ class _StartupViewState extends State<StartupView> with SingleTickerProviderStat
       curve: Curves.easeInOut,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
     _controller.forward();
 
@@ -49,8 +51,10 @@ class _StartupViewState extends State<StartupView> with SingleTickerProviderStat
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
-        final tween =
-            Tween(begin: begin, end: end).chain(CurveTween(curve: Curves.easeInOut));
+        final tween = Tween(
+          begin: begin,
+          end: end,
+        ).chain(CurveTween(curve: Curves.easeInOut));
 
         final opacityTween = Tween<double>(begin: 0.0, end: 1.0);
 

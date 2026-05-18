@@ -29,9 +29,9 @@ class ApiService {
       final key = _getSoalCacheKey(slugSection, levelId);
       final jsonString = jsonEncode(soalData);
       await prefs.setString(key, jsonString);
-      print('✅ Soal cached untuk $slugSection level $levelId');
+      debugPrint('✅ Soal cached untuk $slugSection level $levelId');
     } catch (e) {
-      print('❌ Error saving soal to cache: $e');
+      debugPrint('❌ Error saving soal to cache: $e');
     }
   }
 
@@ -45,12 +45,14 @@ class ApiService {
       final jsonString = prefs.getString(key);
       if (jsonString != null) {
         final data = jsonDecode(jsonString);
-        print('✅ Soal loaded from cache untuk $slugSection level $levelId');
+        debugPrint(
+          '✅ Soal loaded from cache untuk $slugSection level $levelId',
+        );
         return {'success': true, 'data': data};
       }
       return null;
     } catch (e) {
-      print('❌ Error getting soal from cache: $e');
+      debugPrint('❌ Error getting soal from cache: $e');
       return null;
     }
   }
@@ -127,14 +129,12 @@ class ApiService {
     bool useCache = true,
     bool forceRefresh = false,
   }) async {
-
     if (useCache && !forceRefresh) {
       final cachedData = await _getSoalFromCache(slugSection, levelId);
       if (cachedData != null) {
         return cachedData;
       }
     }
-
 
     final url = Uri.parse('$baseUrl/$slugSection/levels/$levelId/soal');
     try {
@@ -143,7 +143,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-     
+
         await _saveSoalToCache(slugSection, levelId, data);
         return {'success': true, 'data': data};
       } else {
@@ -157,7 +157,7 @@ class ApiService {
       if (useCache) {
         final cachedData = await _getSoalFromCache(slugSection, levelId);
         if (cachedData != null) {
-          print('⚠️ API error, using cached data: $e');
+          debugPrint('⚠️ API error, using cached data: $e');
           return cachedData;
         }
       }
@@ -207,10 +207,10 @@ class ApiService {
     try {
       final headers = await _getHeaders();
 
-      print('=== CREATE ATTEMPT DEBUG ===');
-      print('URL: $url');
-      print('Headers: $headers');
-      print('Body: ${jsonEncode({'id_level': levelId})}');
+      debugPrint('=== CREATE ATTEMPT DEBUG ===');
+      debugPrint('URL: $url');
+      debugPrint('Headers: $headers');
+      debugPrint('Body: ${jsonEncode({'id_level': levelId})}');
 
       final response = await http.post(
         url,
@@ -218,9 +218,9 @@ class ApiService {
         body: jsonEncode({'id_level': levelId}),
       );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('=== END DEBUG ===');
+      debugPrint('Response Status: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      debugPrint('=== END DEBUG ===');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -234,7 +234,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('EXCEPTION in createAttempt: $e');
+      debugPrint('EXCEPTION in createAttempt: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
@@ -246,8 +246,8 @@ class ApiService {
     final url = Uri.parse('$baseUrl/attempts/$attemptId/jawaban-pg');
     try {
       final headers = await _getHeaders();
-      print('Submitting PG to: $url');
-      print('Payload: {idOpsi: $opsiId}');
+      debugPrint('Submitting PG to: $url');
+      debugPrint('Payload: {idOpsi: $opsiId}');
 
       final response = await http.post(
         url,
@@ -255,8 +255,8 @@ class ApiService {
         body: jsonEncode({'idOpsi': opsiId}),
       );
 
-      print('PG Response status: ${response.statusCode}');
-      print('PG Response body: ${response.body}');
+      debugPrint('PG Response status: ${response.statusCode}');
+      debugPrint('PG Response body: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -268,7 +268,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in submitJawabanPG: $e');
+      debugPrint('Exception in submitJawabanPG: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
@@ -281,8 +281,8 @@ class ApiService {
     final url = Uri.parse('$baseUrl/attempts/$attemptId/jawaban-esai/$soalId');
     try {
       final headers = await _getHeaders();
-      print('Submitting Essay to: $url');
-      print('Payload: {jawaban: $jawaban}');
+      debugPrint('Submitting Essay to: $url');
+      debugPrint('Payload: {jawaban: $jawaban}');
 
       final response = await http.post(
         url,
@@ -290,8 +290,8 @@ class ApiService {
         body: jsonEncode({'jawaban': jawaban}),
       );
 
-      print('Essay Response status: ${response.statusCode}');
-      print('Essay Response body: ${response.body}');
+      debugPrint('Essay Response status: ${response.statusCode}');
+      debugPrint('Essay Response body: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -303,7 +303,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in submitJawabanEsai: $e');
+      debugPrint('Exception in submitJawabanEsai: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
@@ -314,13 +314,13 @@ class ApiService {
       final headers = await _getHeaders();
       final body = jsonEncode({'id_attempt': attemptId});
 
-      print('Calling Finalize/Submit Attempt: $url');
-      print('Body: $body');
+      debugPrint('Calling Finalize/Submit Attempt: $url');
+      debugPrint('Body: $body');
 
       final response = await http.post(url, headers: headers, body: body);
 
-      print('submitAttempt - Status Code: ${response.statusCode}');
-      print('submitAttempt - Response Body: ${response.body}');
+      debugPrint('submitAttempt - Status Code: ${response.statusCode}');
+      debugPrint('submitAttempt - Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -334,7 +334,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('submitAttempt - Exception: $e');
+      debugPrint('submitAttempt - Exception: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
@@ -385,12 +385,12 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(url, headers: headers);
-      print("ini id nya" + pelajarId.toString());
-      print('=== GET ATTEMPTS BY PELAJAR DEBUG ===');
-      print('URL: $url');
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('=== END DEBUG ===');
+      debugPrint("ini id nya$pelajarId");
+      debugPrint('=== GET ATTEMPTS BY PELAJAR DEBUG ===');
+      debugPrint('URL: $url');
+      debugPrint('Response Status: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      debugPrint('=== END DEBUG ===');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -402,7 +402,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in getAttemptsByPelajarId: $e');
+      debugPrint('Exception in getAttemptsByPelajarId: $e');
       return {'success': false, 'message': e.toString()};
     }
   }

@@ -58,6 +58,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
 
     final response = await _apiService.changePassword(oldPw, newPw);
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     String message =
@@ -69,7 +70,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
 
     if (isSuccess) {
       final messenger = ScaffoldMessenger.of(context);
-      if (mounted) Navigator.of(context).pop();
+      Navigator.of(context).pop();
 
       messenger.showSnackBar(
         SnackBar(

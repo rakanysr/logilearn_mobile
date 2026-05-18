@@ -34,7 +34,7 @@ class _HomeViewState extends State<HomeView> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_sections.isNotEmpty) {
-      print('HomeView: didChangeDependencies - refreshing unlock status');
+      debugPrint('HomeView: didChangeDependencies - refreshing unlock status');
       _updateUnlockedLevels();
     }
   }
@@ -76,20 +76,22 @@ class _HomeViewState extends State<HomeView> {
             final item = sectionsList[i];
 
             Color sectionColor;
-            if (i % 3 == 0)
+            if (i % 3 == 0) {
               sectionColor = const Color(0xFF2F80ED);
-            else if (i % 3 == 1)
+            } else if (i % 3 == 1) {
               sectionColor = const Color(0xFF2D9CDB);
-            else
+            } else {
               sectionColor = const Color(0xFF27AE60);
+            }
 
             String imageAsset;
-            if (i % 3 == 0)
+            if (i % 3 == 0) {
               imageAsset = 'assets/images/Mascot halo.png';
-            else if (i % 3 == 1)
+            } else if (i % 3 == 1) {
               imageAsset = 'assets/images/Mascot banyak.png';
-            else
+            } else {
               imageAsset = 'assets/images/Mascot buntung.png';
+            }
 
             int unlocked = 1;
 
@@ -124,8 +126,8 @@ class _HomeViewState extends State<HomeView> {
             await _updateUnlockedLevels();
           }
         } catch (e) {
-          print("Error parsing sections: $e");
-      
+          debugPrint("Error parsing sections: $e");
+
           _sections = [];
         }
       } else {
@@ -143,11 +145,11 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Future<void> _loadLevelsForSection(String slugSection) async {
-    print('_loadLevelsForSection called with slug: $slugSection');
+    debugPrint('_loadLevelsForSection called with slug: $slugSection');
     final apiService = ApiService();
     final result = await apiService.getLevelsBySection(slugSection);
 
-    print('getLevelsBySection result success: ${result['success']}');
+    debugPrint('getLevelsBySection result success: ${result['success']}');
 
     if (result['success']) {
       final fullResponse = result['data'];
@@ -157,13 +159,13 @@ class _HomeViewState extends State<HomeView> {
           fullResponse['payload'] is Map &&
           fullResponse['payload']['datas'] is List) {
         levelsList = fullResponse['payload']['datas'];
-        print('Parsed levels from payload.datas: ${levelsList.length}');
+        debugPrint('Parsed levels from payload.datas: ${levelsList.length}');
       } else if (fullResponse is Map && fullResponse['datas'] is List) {
         levelsList = fullResponse['datas'];
-        print('Parsed levels from datas: ${levelsList.length}');
+        debugPrint('Parsed levels from datas: ${levelsList.length}');
       } else if (fullResponse is List) {
         levelsList = fullResponse;
-        print('Parsed levels from direct list: ${levelsList.length}');
+        debugPrint('Parsed levels from direct list: ${levelsList.length}');
       }
 
       if (mounted) {
@@ -179,29 +181,29 @@ class _HomeViewState extends State<HomeView> {
 
           _levels.sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
 
-          print('Loaded ${_levels.length} levels into state:');
+          debugPrint('Loaded ${_levels.length} levels into state:');
           for (var i = 0; i < _levels.length; i++) {
-            print(
+            debugPrint(
               '  Index $i: id=${_levels[i]['id']}, nama=${_levels[i]['nama']}',
             );
           }
         });
       }
     } else {
-      print('Failed to load levels: ${result['message']}');
+      debugPrint('Failed to load levels: ${result['message']}');
     }
   }
 
   Future<void> _updateUnlockedLevels() async {
-    print('========================================');
-    print('_updateUnlockedLevels called');
+    debugPrint('========================================');
+    debugPrint('_updateUnlockedLevels called');
     final apiService = ApiService();
 
     final pelajarIdStr = await _storage.read(key: 'id_pelajar');
-    print('Pelajar ID from storage: $pelajarIdStr');
+    debugPrint('Pelajar ID from storage: $pelajarIdStr');
 
     if (pelajarIdStr == null) {
-      print('No pelajar ID found in storage');
+      debugPrint('No pelajar ID found in storage');
       if (_sections.isNotEmpty && mounted) {
         setState(() {
           for (var i = 0; i < _sections.length; i++) {
@@ -215,11 +217,11 @@ class _HomeViewState extends State<HomeView> {
 
     final pelajarId = int.tryParse(pelajarIdStr);
     if (pelajarId == null) {
-      print('Invalid pelajar ID: $pelajarIdStr');
+      debugPrint('Invalid pelajar ID: $pelajarIdStr');
       return;
     }
 
-    print('Fetching attempts for pelajar ID: $pelajarId');
+    debugPrint('Fetching attempts for pelajar ID: $pelajarId');
 
     final result = await apiService.getAttemptsByPelajarId(pelajarId);
 
@@ -235,7 +237,7 @@ class _HomeViewState extends State<HomeView> {
         attemptsList = fullResponse;
       }
 
-      print('Found ${attemptsList.length} attempts');
+      debugPrint('Found ${attemptsList.length} attempts');
 
       Map<int, int> sectionMaxLevels = {};
       Map<int, Set<int>> sectionCompletedLevelIds = {};
@@ -247,14 +249,13 @@ class _HomeViewState extends State<HomeView> {
             final sectionId = attempt['levels']['sections']['id'] as int;
             final levelId = attempt['levels']['id'] as int;
 
-   
             final skor = attempt['skor'] != null
                 ? (attempt['skor'] is num
                       ? (attempt['skor'] as num).toDouble()
                       : 0.0)
                 : 0.0;
 
-            print(
+            debugPrint(
               'Attempt: sectionId=$sectionId, levelId=$levelId, skor=$skor',
             );
 
@@ -269,16 +270,18 @@ class _HomeViewState extends State<HomeView> {
               }
               sectionCompletedLevelIds[sectionId]!.add(levelId);
             } else {
-              print('  Score $skor is below 75, not counting as completed');
+              debugPrint(
+                '  Score $skor is below 75, not counting as completed',
+              );
             }
           }
         } catch (e) {
-          print('Error processing attempt: $e');
+          debugPrint('Error processing attempt: $e');
         }
       }
 
-      print('Section max levels: $sectionMaxLevels');
-      print('Section completed level IDs: $sectionCompletedLevelIds');
+      debugPrint('Section max levels: $sectionMaxLevels');
+      debugPrint('Section completed level IDs: $sectionCompletedLevelIds');
 
       for (var i = 0; i < _sections.length; i++) {
         final section = _sections[i];
@@ -286,7 +289,7 @@ class _HomeViewState extends State<HomeView> {
         final sectionSlug = section['slug'] as String?;
 
         if (sectionId == null || sectionSlug == null) {
-          print('Section $i has no ID or slug, skipping');
+          debugPrint('Section $i has no ID or slug, skipping');
           continue;
         }
 
@@ -296,21 +299,19 @@ class _HomeViewState extends State<HomeView> {
         if (sectionMaxLevels.containsKey(sectionId)) {
           if (sectionCompletedLevelIds.containsKey(sectionId)) {
             completedLevels = sectionCompletedLevelIds[sectionId]!.length;
-            print(
+            debugPrint(
               'Section $sectionId: completed $completedLevels levels (score >= 75)',
             );
           }
-          
+
           final maxCompletedLevelId = sectionMaxLevels[sectionId]!;
 
-          
           final levelsResult = await apiService.getLevelsBySection(sectionSlug);
 
           if (levelsResult['success']) {
             final levelsResponse = levelsResult['data'];
             List<dynamic> sectionLevelsList = [];
 
-          
             if (levelsResponse is Map &&
                 levelsResponse['payload'] is Map &&
                 levelsResponse['payload']['datas'] is List) {
@@ -319,24 +320,22 @@ class _HomeViewState extends State<HomeView> {
               sectionLevelsList = levelsResponse;
             }
 
-       
             sectionLevelsList.sort((a, b) {
               final aId = a['id'] is int ? a['id'] as int : 0;
               final bId = b['id'] is int ? b['id'] as int : 0;
               return aId.compareTo(bId);
             });
 
-            print(
+            debugPrint(
               'Section $sectionId ($sectionSlug) has ${sectionLevelsList.length} levels',
             );
-
 
             int completedLevelIndex = -1;
             for (var j = 0; j < sectionLevelsList.length; j++) {
               final levelId = sectionLevelsList[j]['id'] as int;
               if (levelId == maxCompletedLevelId) {
                 completedLevelIndex = j;
-                print('  Completed level at index $j (id=$levelId)');
+                debugPrint('  Completed level at index $j (id=$levelId)');
                 break;
               }
             }
@@ -348,18 +347,18 @@ class _HomeViewState extends State<HomeView> {
                 unlockedLevel = sectionLevelsList.length;
               }
 
-              print(
+              debugPrint(
                 'Section $sectionId: completed index $completedLevelIndex, unlocking level $unlockedLevel',
               );
             } else {
               unlockedLevel = 1;
-              print(
+              debugPrint(
                 'Section $sectionId: completed level not found in list, unlocking level 1',
               );
             }
           } else {
             unlockedLevel = 1;
-            print(
+            debugPrint(
               'Section $sectionId: failed to fetch levels, unlocking level 1',
             );
           }
@@ -372,7 +371,7 @@ class _HomeViewState extends State<HomeView> {
           });
         }
 
-        print(
+        debugPrint(
           'Section ${i + 1} (id=$sectionId): unlocked up to level $unlockedLevel, completed $completedLevels levels (score >= 75)',
         );
       }
@@ -387,16 +386,16 @@ class _HomeViewState extends State<HomeView> {
         });
       }
 
-      print('========================================');
-      print('FINAL UNLOCK STATUS:');
+      debugPrint('========================================');
+      debugPrint('FINAL UNLOCK STATUS:');
       for (var i = 0; i < _sections.length; i++) {
-        print(
+        debugPrint(
           '  Section ${i + 1}: ${_sections[i]['title']} - Unlocked Level: ${_sections[i]['unlockedLevel']}',
         );
       }
-      print('========================================');
+      debugPrint('========================================');
     } else {
-      print('Failed to fetch attempts: ${result['message']}');
+      debugPrint('Failed to fetch attempts: ${result['message']}');
       if (_sections.isNotEmpty && mounted) {
         setState(() {
           for (var i = 0; i < _sections.length; i++) {
@@ -421,14 +420,15 @@ class _HomeViewState extends State<HomeView> {
         selectedSection['slug'] as String? ??
         'section-${_selectedSectionIndex + 1}';
 
-    print('_navigateToLevelDetail called:');
-    print('  levelIndex: $levelIndex');
-    print('  slugSection: $slugSection');
-    print('  _levels.length: ${_levels.length}');
+    debugPrint('_navigateToLevelDetail called:');
+    debugPrint('  levelIndex: $levelIndex');
+    debugPrint('  slugSection: $slugSection');
+    debugPrint('  _levels.length: ${_levels.length}');
 
     await _loadLevelsForSection(slugSection);
 
     await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
 
     if (levelIndex >= _levels.length || _levels.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -448,12 +448,12 @@ class _HomeViewState extends State<HomeView> {
     final sectionTitle = selectedSection['title'] as String;
     final sectionNumber = _selectedSectionIndex + 1;
 
-    print('Navigating to QuizScreen:');
-    print('  sectionSlug: $slugSection');
-    print('  levelId: $levelId');
-    print('  sectionTitle: $sectionTitle');
-    print('  sectionNumber: $sectionNumber');
-    print('  levelNumber: ${levelIndex + 1}');
+    debugPrint('Navigating to QuizScreen:');
+    debugPrint('  sectionSlug: $slugSection');
+    debugPrint('  levelId: $levelId');
+    debugPrint('  sectionTitle: $sectionTitle');
+    debugPrint('  sectionNumber: $sectionNumber');
+    debugPrint('  levelNumber: ${levelIndex + 1}');
 
     if (levelId == 0) {
       ScaffoldMessenger.of(
@@ -474,7 +474,7 @@ class _HomeViewState extends State<HomeView> {
         ),
       ),
     ).then((_) async {
-      print('Returned from quiz - refreshing unlock status and progress');
+      debugPrint('Returned from quiz - refreshing unlock status and progress');
       await Future.delayed(const Duration(milliseconds: 500));
       await _updateUnlockedLevels();
       if (mounted) {
@@ -652,8 +652,8 @@ class _HomeViewState extends State<HomeView> {
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: (selected['color'] as Color).withOpacity(
-                                  0.3,
+                                color: (selected['color'] as Color).withValues(
+                                  alpha: 0.3,
                                 ),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
@@ -840,7 +840,9 @@ class _HomeViewState extends State<HomeView> {
                                                                 ? sectionColor
                                                                 : Colors
                                                                       .grey[300])!
-                                                            .withOpacity(0.3),
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
                                                     blurRadius: 10,
                                                     offset: const Offset(0, 6),
                                                   ),
@@ -900,7 +902,9 @@ class _HomeViewState extends State<HomeView> {
                                                     boxShadow: [
                                                       BoxShadow(
                                                         color: sectionColor
-                                                            .withOpacity(0.3),
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
                                                         blurRadius: 4,
                                                         offset: const Offset(
                                                           0,
@@ -986,7 +990,9 @@ class _HomeViewState extends State<HomeView> {
                               borderRadius: BorderRadius.circular(18),
                               boxShadow: [
                                 BoxShadow(
-                                  color: (s['color'] as Color).withOpacity(0.3),
+                                  color: (s['color'] as Color).withValues(
+                                    alpha: 0.3,
+                                  ),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
