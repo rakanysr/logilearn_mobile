@@ -18,6 +18,7 @@ class _HomeViewState extends State<HomeView> {
   final int _currentBottomNavIndex = 0;
   String? _username;
   bool _isLoading = true;
+  bool _isNavigating = false;
 
   List<Map<String, dynamic>> _sections = [];
   List<Map<String, dynamic>> _levels = [];
@@ -408,79 +409,95 @@ class _HomeViewState extends State<HomeView> {
   }
 
   void _navigateToLevelDetail(int levelIndex) async {
-    if (_sections.isEmpty || _selectedSectionIndex >= _sections.length) {
-      ScaffoldMessenger.of(
+    if (_isNavigating) return;
+
+    setState(() {
+      _isNavigating = true;
+    });
+
+    try {
+      if (_sections.isEmpty || _selectedSectionIndex >= _sections.length) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Section tidak ditemukan')));
+        return;
+      }
+
+      final selectedSection = _sections[_selectedSectionIndex];
+      final slugSection =
+          selectedSection['slug'] as String? ??
+          'section-${_selectedSectionIndex + 1}';
+
+      debugPrint('_navigateToLevelDetail called:');
+      debugPrint('  levelIndex: $levelIndex');
+      debugPrint('  slugSection: $slugSection');
+      debugPrint('  _levels.length: ${_levels.length}');
+
+      await _loadLevelsForSection(slugSection);
+
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (!mounted) return;
+
+      if (levelIndex >= _levels.length || _levels.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Level tidak ditemukan. Total levels: ${_levels.length}',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final level = _levels[levelIndex];
+      final levelId = level['id'] is int
+          ? level['id'] as int
+          : int.tryParse(level['id'].toString()) ?? 0;
+      final sectionTitle = selectedSection['title'] as String;
+      final sectionNumber = _selectedSectionIndex + 1;
+
+      debugPrint('Navigating to QuizScreen:');
+      debugPrint('  sectionSlug: $slugSection');
+      debugPrint('  levelId: $levelId');
+      debugPrint('  sectionTitle: $sectionTitle');
+      debugPrint('  sectionNumber: $sectionNumber');
+      debugPrint('  levelNumber: ${levelIndex + 1}');
+
+      if (levelId == 0) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('ID Level tidak valid')));
+        return;
+      }
+
+      await Navigator.push(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Section tidak ditemukan')));
-      return;
-    }
-
-    final selectedSection = _sections[_selectedSectionIndex];
-    final slugSection =
-        selectedSection['slug'] as String? ??
-        'section-${_selectedSectionIndex + 1}';
-
-    debugPrint('_navigateToLevelDetail called:');
-    debugPrint('  levelIndex: $levelIndex');
-    debugPrint('  slugSection: $slugSection');
-    debugPrint('  _levels.length: ${_levels.length}');
-
-    await _loadLevelsForSection(slugSection);
-
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (!mounted) return;
-
-    if (levelIndex >= _levels.length || _levels.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Level tidak ditemukan. Total levels: ${_levels.length}',
+        MaterialPageRoute(
+          builder: (context) => QuizScreen(
+            sectionSlug: slugSection,
+            levelId: levelId,
+            sectionTitle: sectionTitle,
+            sectionNumber: sectionNumber,
+            levelNumber: levelIndex + 1,
           ),
         ),
       );
-      return;
-    }
 
-    final level = _levels[levelIndex];
-    final levelId = level['id'] is int
-        ? level['id'] as int
-        : int.tryParse(level['id'].toString()) ?? 0;
-    final sectionTitle = selectedSection['title'] as String;
-    final sectionNumber = _selectedSectionIndex + 1;
-
-    debugPrint('Navigating to QuizScreen:');
-    debugPrint('  sectionSlug: $slugSection');
-    debugPrint('  levelId: $levelId');
-    debugPrint('  sectionTitle: $sectionTitle');
-    debugPrint('  sectionNumber: $sectionNumber');
-    debugPrint('  levelNumber: ${levelIndex + 1}');
-
-    if (levelId == 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('ID Level tidak valid')));
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => QuizScreen(
-          sectionSlug: slugSection,
-          levelId: levelId,
-          sectionTitle: sectionTitle,
-          sectionNumber: sectionNumber,
-          levelNumber: levelIndex + 1,
-        ),
-      ),
-    ).then((_) async {
       debugPrint('Returned from quiz - refreshing unlock status and progress');
       await Future.delayed(const Duration(milliseconds: 500));
       await _updateUnlockedLevels();
       if (mounted) {
         setState(() {});
       }
-    });
+    } catch (e) {
+      debugPrint('Error during navigation: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isNavigating = false;
+        });
+      }
+    }
   }
 
   void _showLockedPopup() {
