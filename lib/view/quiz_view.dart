@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgetSoal/question_card.dart' as quiz_widget;
 import '../widgetSoal/finish_screen.dart';
 import '../services/api_service.dart';
@@ -53,12 +55,87 @@ class _QuizScreenState extends State<QuizScreen> {
   final Map<int, int> _userAnswers = {};
   final Map<int, String> _userEssayAnswers = {};
   TextEditingController? _essayController;
-  int? _currentAttemptId;
 
   @override
   void initState() {
     super.initState();
     _initQuiz();
+  }
+
+  String _getDraftKey() {
+    return 'quiz_draft_level_${widget.levelId}';
+  }
+
+  Future<void> _saveDraftLocally() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      final stringUserAnswers = _userAnswers.map((key, value) => MapEntry(key.toString(), value));
+      final stringEssayAnswers = _userEssayAnswers.map((key, value) => MapEntry(key.toString(), value));
+
+      final draftData = {
+        'currentIndex': currentIndex,
+        'userAnswers': stringUserAnswers,
+        'userEssayAnswers': stringEssayAnswers,
+      };
+
+      await prefs.setString(_getDraftKey(), jsonEncode(draftData));
+      debugPrint('💾 Draft saved locally for level ${widget.levelId}');
+    } catch (e) {
+      debugPrint('❌ Error saving draft: $e');
+    }
+  }
+
+  Future<void> _loadDraftLocally() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftString = prefs.getString(_getDraftKey());
+      if (draftString != null) {
+        final draftData = jsonDecode(draftString) as Map<String, dynamic>;
+        
+        setState(() {
+          currentIndex = draftData['currentIndex'] as int? ?? 0;
+          
+          final rawAnswers = draftData['userAnswers'] as Map<String, dynamic>? ?? {};
+          rawAnswers.forEach((key, value) {
+            final intKey = int.tryParse(key);
+            if (intKey != null && value is int) {
+              _userAnswers[intKey] = value;
+            }
+          });
+
+          final rawEssayAnswers = draftData['userEssayAnswers'] as Map<String, dynamic>? ?? {};
+          rawEssayAnswers.forEach((key, value) {
+            final intKey = int.tryParse(key);
+            if (intKey != null && value is String) {
+              _userEssayAnswers[intKey] = value;
+            }
+          });
+
+          if (_userAnswers.containsKey(currentIndex)) {
+            final savedIndex = _userAnswers[currentIndex];
+            selectedIndex = savedIndex == -1 ? null : savedIndex;
+          } else {
+            selectedIndex = null;
+          }
+          essayAnswer = _userEssayAnswers[currentIndex] ?? "";
+          _updateEssayController();
+        });
+        debugPrint('💾 Draft loaded successfully for level ${widget.levelId}. Resuming at question $currentIndex.');
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading draft: $e');
+    }
+  }
+
+  Future<void> _clearDraftLocally() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_getDraftKey());
+      debugPrint('🧹 Draft cleared for level ${widget.levelId}');
+    } catch (e) {
+      debugPrint('❌ Error clearing draft: $e');
+    }
   }
 
   Future<void> _initQuiz() async {
@@ -80,12 +157,10 @@ class _QuizScreenState extends State<QuizScreen> {
         'Loading questions for level ${widget.levelId} in section ${widget.sectionSlug}',
       );
 
-      // getSoalsByLevel akan otomatis check cache dulu sebelum fetch dari API
-      // Ini akan membuat loading lebih cepat jika soal sudah pernah di-load sebelumnya
       final result = await apiService.getSoalsByLevel(
         widget.sectionSlug,
         widget.levelId,
-        useCache: true, // Gunakan cache untuk loading yang lebih cepat
+        useCache: true,
       );
 
       if (result['success']) {
@@ -167,6 +242,8 @@ class _QuizScreenState extends State<QuizScreen> {
             _isLoading = false;
           });
           debugPrint('Loaded ${questions.length} questions');
+          
+          await _loadDraftLocally();
         } else {
           setState(() {
             _errorMessage = 'Tidak ada soal ditemukan untuk level ini';
@@ -201,91 +278,6 @@ class _QuizScreenState extends State<QuizScreen> {
     return int.tryParse(rawId?.toString() ?? '');
   }
 
-  Future<bool> _ensureAttemptCreated() async {
-    if (_currentAttemptId != null) return true;
-
-    final apiService = ApiService();
-    final attemptRes = await apiService.createAttempt(widget.levelId);
-
-    if (!attemptRes['success']) {
-      if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(attemptRes['message'] ?? 'Gagal memulai attempt'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false;
-    }
-
-    _currentAttemptId = _readAttemptId(attemptRes['data']);
-    if (_currentAttemptId == null) {
-      if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gagal membaca ID attempt dari server'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false;
-    }
-
-    return true;
-  }
-
-  Future<bool> _submitCurrentAnswer() async {
-    final attemptReady = await _ensureAttemptCreated();
-    if (!attemptReady || _currentAttemptId == null) return false;
-
-    final currentQ = questions[currentIndex];
-    final apiService = ApiService();
-
-    try {
-      if (currentQ.isEssay) {
-        final answer = essayAnswer;
-        if (answer.isNotEmpty) {
-          debugPrint('Submitting essay answer for question ${currentQ.id}...');
-          final result = await apiService.submitJawabanEsai(
-            _currentAttemptId!,
-            currentQ.id,
-            answer,
-          );
-          debugPrint('Essay submission result: $result');
-          if (!result['success']) {
-            debugPrint('ERROR: Essay submission failed: ${result['message']}');
-          }
-        } else {
-          debugPrint('Skipping empty essay answer');
-          return false;
-        }
-      } else {
-        if (selectedIndex != null && currentQ.optionIds != null) {
-          final optId = currentQ.optionIds![selectedIndex!];
-          debugPrint(
-            'Submitting PG answer for question ${currentQ.id}, option $optId...',
-          );
-          final result = await apiService.submitJawabanPG(
-            _currentAttemptId!,
-            optId,
-          );
-          debugPrint('PG submission result: $result');
-          if (!result['success']) {
-            debugPrint('ERROR: PG submission failed: ${result['message']}');
-          }
-        } else {
-          debugPrint(
-            'Skipping PG answer - no option selected or optionIds missing',
-          );
-          return false;
-        }
-      }
-      return true;
-    } catch (e) {
-      debugPrint('EXCEPTION in _submitCurrentAnswer: $e');
-      return false;
-    }
-  }
-
   bool _hasAnswered(Question question) {
     if (question.isEssay) return essayAnswer.trim().isNotEmpty;
     return selectedIndex != null || _userAnswers[currentIndex] != null;
@@ -304,6 +296,19 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
+  int _calculateLocalPGScore() {
+    int localScore = 0;
+    for (int i = 0; i < questions.length; i++) {
+      final q = questions[i];
+      if (!q.isEssay) {
+        if (_userAnswers[i] == q.correctIndex) {
+          localScore++;
+        }
+      }
+    }
+    return localScore;
+  }
+
   Future<void> nextQuestion() async {
     if (questions.isEmpty || _isSubmitting) return;
 
@@ -313,33 +318,14 @@ class _QuizScreenState extends State<QuizScreen> {
       return;
     }
 
-    setState(() => _isSubmitting = true);
-
-    if (currentQ.isEssay) {
-      _userEssayAnswers[currentIndex] = essayAnswer;
-    } else {
-      _userAnswers[currentIndex] = selectedIndex ?? -1;
-      if (selectedIndex == currentQ.correctIndex) {
-        score++;
-      }
-    }
-
-    final submitted = await _submitCurrentAnswer();
-    if (!mounted) return;
-    if (!submitted) {
-      setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Jawaban belum berhasil dikirim. Coba lagi.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     if (currentIndex < questions.length - 1) {
       setState(() {
-        _isSubmitting = false;
+        if (currentQ.isEssay) {
+          _userEssayAnswers[currentIndex] = essayAnswer;
+        } else {
+          _userAnswers[currentIndex] = selectedIndex ?? -1;
+        }
+
         currentIndex++;
 
         if (_userAnswers.containsKey(currentIndex)) {
@@ -352,62 +338,111 @@ class _QuizScreenState extends State<QuizScreen> {
 
         _updateEssayController();
       });
+      
+      await _saveDraftLocally();
     } else {
-      setState(() => _isLoading = true);
-      double? finalScore;
+      setState(() {
+        if (currentQ.isEssay) {
+          _userEssayAnswers[currentIndex] = essayAnswer;
+        } else {
+          _userAnswers[currentIndex] = selectedIndex ?? -1;
+        }
+        _isSubmitting = true;
+      });
+
+      await _saveDraftLocally();
 
       try {
-        if (_currentAttemptId != null) {
-          final apiService = ApiService();
+        final apiService = ApiService();
 
-          final res = await apiService.submitAttempt(_currentAttemptId!);
-          debugPrint('Finish Quiz - Submit Attempt Result: $res');
+        final attemptRes = await apiService.createAttempt(widget.levelId);
+        if (!attemptRes['success']) {
+          throw Exception(attemptRes['message'] ?? 'Gagal membuat attempt di server');
+        }
 
-          if (res['success']) {
-            final data = res['data'];
+        final attemptId = _readAttemptId(attemptRes['data']);
+        if (attemptId == null) {
+          throw Exception('Gagal membaca ID attempt dari server');
+        }
 
-            dynamic rawScore;
-            if (data is Map) {
-              if (data['payload'] != null && data['payload']['datas'] != null) {
-                // Backend standard response format
-                rawScore = data['payload']['datas']['skor'];
-              } else if (data['skor'] != null) {
-                // Direct attempt object
-                rawScore = data['skor'];
+        for (int i = 0; i < questions.length; i++) {
+          final q = questions[i];
+          if (q.isEssay) {
+            final answer = _userEssayAnswers[i];
+            if (answer != null && answer.trim().isNotEmpty) {
+              final res = await apiService.submitJawabanEsai(attemptId, q.id, answer);
+              if (!res['success']) {
+                throw Exception('Gagal mengirim jawaban esai ke-${i + 1}: ${res['message']}');
               }
             }
-
-            if (rawScore != null) {
-              finalScore = double.tryParse(rawScore.toString());
-              debugPrint('Parsed Final Score: $finalScore');
+          } else {
+            final savedSelIndex = _userAnswers[i];
+            if (savedSelIndex != null && savedSelIndex != -1 && q.optionIds != null) {
+              final optId = q.optionIds![savedSelIndex];
+              final res = await apiService.submitJawabanPG(attemptId, optId);
+              if (!res['success']) {
+                throw Exception('Gagal mengirim jawaban pilihan ganda ke-${i + 1}: ${res['message']}');
+              }
             }
           }
         }
-      } catch (e) {
-        debugPrint('Error fetching final score: $e');
-      }
 
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _isSubmitting = false;
-      });
+        final finalizeRes = await apiService.submitAttempt(attemptId);
+        if (!finalizeRes['success']) {
+          throw Exception(finalizeRes['message'] ?? 'Gagal memfinalisasi kuis');
+        }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => FinishScreen(
-            score: score,
-            finalPercentage: finalScore,
-            totalQuestions: questions.length,
-            sectionSlug: widget.sectionSlug,
-            levelId: widget.levelId,
-            sectionTitle: widget.sectionTitle,
-            sectionNumber: widget.sectionNumber,
-            levelNumber: widget.levelNumber,
+        double? finalScore;
+        final data = finalizeRes['data'];
+        dynamic rawScore;
+        if (data is Map) {
+          if (data['payload'] != null && data['payload']['datas'] != null) {
+            rawScore = data['payload']['datas']['skor'];
+          } else if (data['skor'] != null) {
+            rawScore = data['skor'];
+          }
+        }
+
+        if (rawScore != null) {
+          finalScore = double.tryParse(rawScore.toString());
+        }
+
+        await _clearDraftLocally();
+
+        if (!mounted) return;
+        setState(() {
+          _isSubmitting = false;
+        });
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FinishScreen(
+              score: _calculateLocalPGScore(),
+              finalPercentage: finalScore,
+              totalQuestions: questions.length,
+              sectionSlug: widget.sectionSlug,
+              levelId: widget.levelId,
+              sectionTitle: widget.sectionTitle,
+              sectionNumber: widget.sectionNumber,
+              levelNumber: widget.levelNumber,
+            ),
           ),
-        ),
-      );
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isSubmitting = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Terjadi kendala pengiriman: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -444,6 +479,7 @@ class _QuizScreenState extends State<QuizScreen> {
             essayAnswer = val;
             _userEssayAnswers[currentIndex] = val;
           });
+          _saveDraftLocally();
         },
       ),
     );
@@ -524,6 +560,7 @@ class _QuizScreenState extends State<QuizScreen> {
     final canContinue = _hasAnswered(question) && !_isSubmitting;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -548,58 +585,69 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 30),
-              quiz_widget.QuestionCard(
-                question: question.question,
-                imagePath: 'assets/images/Mascot bertangan.png',
-              ),
-
               const SizedBox(height: 20),
-              if (!question.isEssay)
-                Column(
-                  children: List.generate(
-                    question.options!.length,
-                    (index) => GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = index;
-                          _userAnswers[currentIndex] = index;
-                        });
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: currentSelectedIndex == index
-                              ? Colors.blueAccent
-                              : Colors.white,
-                          border: Border.all(
-                            color: currentSelectedIndex == index
-                                ? Colors.blueAccent
-                                : Colors.grey.shade400,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            question.options![index],
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: currentSelectedIndex == index
-                                  ? Colors.white
-                                  : Colors.black,
+              
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      quiz_widget.QuestionCard(
+                        question: question.question,
+                        imagePath: 'assets/images/Mascot bertangan.png',
+                      ),
+                      const SizedBox(height: 20),
+                      if (!question.isEssay)
+                        Column(
+                          children: List.generate(
+                            question.options!.length,
+                            (index) => GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  selectedIndex = index;
+                                  _userAnswers[currentIndex] = index;
+                                });
+                                _saveDraftLocally();
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: currentSelectedIndex == index
+                                      ? Colors.blueAccent
+                                      : Colors.white,
+                                  border: Border.all(
+                                    color: currentSelectedIndex == index
+                                        ? Colors.blueAccent
+                                        : Colors.grey.shade400,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    question.options![index],
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: currentSelectedIndex == index
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
+                        )
+                      else
+                        _buildEssayField(),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                )
-              else
-                _buildEssayField(),
+                ),
+              ),
 
-              const Spacer(),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
