@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:3030/api/auth';
-    if (Platform.isAndroid) return 'http://10.0.2.2:3030/api/auth';
-    return 'http://localhost:3030/api/auth';
+    final apiUrl = dotenv.env['VITE_API_URL'] ?? 'http://localhost:3030';
+    return '$apiUrl/api/auth';
   }
 
   final _storage = const FlutterSecureStorage();
