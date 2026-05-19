@@ -89,8 +89,14 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       final pelajarId = int.parse(pelajarIdStr);
       debugPrint('=== Loading attempt data for pelajar: $pelajarId ===');
 
-      // 2. Fetch attempts for this student
-      final attemptsResult = await apiService.getAttemptsByPelajarId(pelajarId);
+      // 2. Fetch attempts and sections in parallel
+      final results = await Future.wait([
+        apiService.getAttemptsByPelajarId(pelajarId),
+        apiService.getSections(),
+      ]);
+
+      final attemptsResult = results[0];
+      final sectionsResult = results[1];
 
       if (!attemptsResult['success']) {
         setState(() {
@@ -135,7 +141,6 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       // Diambil sebelum pengecekan attempts agar bisa digunakan saat tidak ada attempt
       List<Map<String, dynamic>> sectionsList = [];
       try {
-        final sectionsResult = await apiService.getSections();
         if (sectionsResult['success']) {
           final sectionsResponse = sectionsResult['data'];
           List<dynamic> sectionsData = [];

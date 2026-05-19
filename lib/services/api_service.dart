@@ -56,12 +56,18 @@ class ApiService {
     }
   }
 
+  static String? _cachedToken;
+
+  static void clearCache() {
+    _cachedToken = null;
+  }
+
   // Headers helper
   Future<Map<String, String>> _getHeaders() async {
-    final token = await _storage.read(key: 'token');
+    _cachedToken ??= await _storage.read(key: 'token');
     return {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
+      'Authorization': 'Bearer $_cachedToken',
     };
   }
 

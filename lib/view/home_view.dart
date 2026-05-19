@@ -19,6 +19,8 @@ class _HomeViewState extends State<HomeView> {
   String? _username;
   bool _isLoading = true;
   bool _isNavigating = false;
+  bool _isLoadingLevels = false;
+  int? _loadingLevelIndex;
 
   List<Map<String, dynamic>> _sections = [];
   List<Map<String, dynamic>> _levels = [];
@@ -34,6 +36,8 @@ class _HomeViewState extends State<HomeView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _isNavigating = false;
+    _loadingLevelIndex = null;
     if (_sections.isNotEmpty) {
       debugPrint('HomeView: didChangeDependencies - refreshing unlock status');
       _updateUnlockedLevels();
@@ -147,51 +151,66 @@ class _HomeViewState extends State<HomeView> {
 
   Future<void> _loadLevelsForSection(String slugSection) async {
     debugPrint('_loadLevelsForSection called with slug: $slugSection');
+    if (mounted) {
+      setState(() {
+        _isLoadingLevels = true;
+      });
+    }
     final apiService = ApiService();
-    final result = await apiService.getLevelsBySection(slugSection);
+    try {
+      final result = await apiService.getLevelsBySection(slugSection);
 
-    debugPrint('getLevelsBySection result success: ${result['success']}');
+      debugPrint('getLevelsBySection result success: ${result['success']}');
 
-    if (result['success']) {
-      final fullResponse = result['data'];
-      List<dynamic> levelsList = [];
+      if (result['success']) {
+        final fullResponse = result['data'];
+        List<dynamic> levelsList = [];
 
-      if (fullResponse is Map &&
-          fullResponse['payload'] is Map &&
-          fullResponse['payload']['datas'] is List) {
-        levelsList = fullResponse['payload']['datas'];
-        debugPrint('Parsed levels from payload.datas: ${levelsList.length}');
-      } else if (fullResponse is Map && fullResponse['datas'] is List) {
-        levelsList = fullResponse['datas'];
-        debugPrint('Parsed levels from datas: ${levelsList.length}');
-      } else if (fullResponse is List) {
-        levelsList = fullResponse;
-        debugPrint('Parsed levels from direct list: ${levelsList.length}');
+        if (fullResponse is Map &&
+            fullResponse['payload'] is Map &&
+            fullResponse['payload']['datas'] is List) {
+          levelsList = fullResponse['payload']['datas'];
+          debugPrint('Parsed levels from payload.datas: ${levelsList.length}');
+        } else if (fullResponse is Map && fullResponse['datas'] is List) {
+          levelsList = fullResponse['datas'];
+          debugPrint('Parsed levels from datas: ${levelsList.length}');
+        } else if (fullResponse is List) {
+          levelsList = fullResponse;
+          debugPrint('Parsed levels from direct list: ${levelsList.length}');
+        }
+
+        if (mounted) {
+          setState(() {
+            _levels = levelsList.map<Map<String, dynamic>>((level) {
+              final levelMap = level is Map<String, dynamic>
+                  ? level
+                  : (level is Map
+                        ? Map<String, dynamic>.from(level)
+                        : <String, dynamic>{});
+              return {'id': levelMap['id'], 'nama': levelMap['nama'] ?? 'Level'};
+            }).toList();
+
+            _levels.sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
+
+            debugPrint('Loaded ${_levels.length} levels into state:');
+            for (var i = 0; i < _levels.length; i++) {
+              debugPrint(
+                '  Index $i: id=${_levels[i]['id']}, nama=${_levels[i]['nama']}',
+              );
+            }
+          });
+        }
+      } else {
+        debugPrint('Failed to load levels: ${result['message']}');
       }
-
+    } catch (e) {
+      debugPrint('Error loading levels: $e');
+    } finally {
       if (mounted) {
         setState(() {
-          _levels = levelsList.map<Map<String, dynamic>>((level) {
-            final levelMap = level is Map<String, dynamic>
-                ? level
-                : (level is Map
-                      ? Map<String, dynamic>.from(level)
-                      : <String, dynamic>{});
-            return {'id': levelMap['id'], 'nama': levelMap['nama'] ?? 'Level'};
-          }).toList();
-
-          _levels.sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
-
-          debugPrint('Loaded ${_levels.length} levels into state:');
-          for (var i = 0; i < _levels.length; i++) {
-            debugPrint(
-              '  Index $i: id=${_levels[i]['id']}, nama=${_levels[i]['nama']}',
-            );
-          }
+          _isLoadingLevels = false;
         });
       }
-    } else {
-      debugPrint('Failed to load levels: ${result['message']}');
     }
   }
 
@@ -284,6 +303,27 @@ class _HomeViewState extends State<HomeView> {
       debugPrint('Section max levels: $sectionMaxLevels');
       debugPrint('Section completed level IDs: $sectionCompletedLevelIds');
 
+      // Fetch levels for all sections in parallel to avoid sequential network request bottleneck
+      final List<Future<Map<String, dynamic>>> levelFutures = [];
+      final List<int> sectionIndicesWithMaxLevels = [];
+      for (var i = 0; i < _sections.length; i++) {
+        final section = _sections[i];
+        final sectionId = section['id'] as int?;
+        final sectionSlug = section['slug'] as String?;
+        if (sectionId != null && sectionSlug != null && sectionMaxLevels.containsKey(sectionId)) {
+          levelFutures.add(apiService.getLevelsBySection(sectionSlug));
+          sectionIndicesWithMaxLevels.add(i);
+        }
+      }
+
+      final List<Map<String, dynamic>> levelResults = await Future.wait(levelFutures);
+      final Map<int, Map<String, dynamic>> sectionLevelsCache = {};
+      for (var k = 0; k < sectionIndicesWithMaxLevels.length; k++) {
+        final sectionIdx = sectionIndicesWithMaxLevels[k];
+        final sectionId = _sections[sectionIdx]['id'] as int;
+        sectionLevelsCache[sectionId] = levelResults[k];
+      }
+
       for (var i = 0; i < _sections.length; i++) {
         final section = _sections[i];
         final sectionId = section['id'] as int?;
@@ -307,7 +347,7 @@ class _HomeViewState extends State<HomeView> {
 
           final maxCompletedLevelId = sectionMaxLevels[sectionId]!;
 
-          final levelsResult = await apiService.getLevelsBySection(sectionSlug);
+          final levelsResult = sectionLevelsCache[sectionId] ?? {'success': false};
 
           if (levelsResult['success']) {
             final levelsResponse = levelsResult['data'];
@@ -413,6 +453,7 @@ class _HomeViewState extends State<HomeView> {
 
     setState(() {
       _isNavigating = true;
+      _loadingLevelIndex = levelIndex;
     });
 
     try {
@@ -432,11 +473,6 @@ class _HomeViewState extends State<HomeView> {
       debugPrint('  levelIndex: $levelIndex');
       debugPrint('  slugSection: $slugSection');
       debugPrint('  _levels.length: ${_levels.length}');
-
-      await _loadLevelsForSection(slugSection);
-
-      await Future.delayed(const Duration(milliseconds: 100));
-      if (!mounted) return;
 
       if (levelIndex >= _levels.length || _levels.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -483,7 +519,14 @@ class _HomeViewState extends State<HomeView> {
         ),
       );
 
-      debugPrint('Returned from quiz - refreshing unlock status and progress');
+      if (mounted) {
+        setState(() {
+          _isNavigating = false;
+          _loadingLevelIndex = null;
+        });
+      }
+
+      debugPrint('Returned from kuis - refreshing unlock status and progress');
       await Future.delayed(const Duration(milliseconds: 500));
       await _updateUnlockedLevels();
       if (mounted) {
@@ -495,6 +538,7 @@ class _HomeViewState extends State<HomeView> {
       if (mounted) {
         setState(() {
           _isNavigating = false;
+          _loadingLevelIndex = null;
         });
       }
     }
@@ -775,37 +819,46 @@ class _HomeViewState extends State<HomeView> {
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20.0),
-                    child: _levels.isEmpty
-                        ? Column(
-                            children: [
-                              const SizedBox(height: 40),
-                              Icon(
-                                Icons.info_outline,
-                                size: 64,
-                                color: Colors.grey[400],
+                    child: _isLoadingLevels
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 40.0),
+                              child: CircularProgressIndicator(
+                                color: selected['color'] as Color,
                               ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Belum Ada Level',
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Level untuk section ini belum tersedia',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
+                            ),
                           )
-                        : Column(
-                            children: List.generate(_levels.length, (index) {
+                        : _levels.isEmpty
+                            ? Column(
+                                children: [
+                                  const SizedBox(height: 40),
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 64,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Belum Ada Level',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Level untuk section ini belum tersedia',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                children: List.generate(_levels.length, (index) {
                               final isUnlocked = index < unlocked;
                               List scores = [];
                               if (selected['levelScores'] is List) {
@@ -869,28 +922,39 @@ class _HomeViewState extends State<HomeView> {
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.center,
                                                 children: [
-                                                  Text(
-                                                    '${index + 1}',
-                                                    style: GoogleFonts.inter(
-                                                      color: isUnlocked
-                                                          ? Colors.white
-                                                          : Colors.grey[600],
-                                                      fontSize: 26,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                  if (isUnlocked &&
-                                                      index < scores.length)
+                                                  if (_loadingLevelIndex == index)
+                                                    const SizedBox(
+                                                      width: 24,
+                                                      height: 24,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 3,
+                                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                      ),
+                                                    )
+                                                  else ...[
                                                     Text(
-                                                      '${scores[index]}%',
+                                                      '${index + 1}',
                                                       style: GoogleFonts.inter(
-                                                        color: Colors.white,
-                                                        fontSize: 14,
+                                                        color: isUnlocked
+                                                            ? Colors.white
+                                                            : Colors.grey[600],
+                                                        fontSize: 26,
                                                         fontWeight:
-                                                            FontWeight.w500,
+                                                            FontWeight.bold,
                                                       ),
                                                     ),
+                                                    if (isUnlocked &&
+                                                        index < scores.length)
+                                                      Text(
+                                                        '${scores[index]}%',
+                                                        style: GoogleFonts.inter(
+                                                          color: Colors.white,
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                  ],
                                                 ],
                                               ),
                                             ),

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logilearn/view/login_view.dart';
+import 'package:logilearn/view/home_view.dart';
 
 class StartupView extends StatefulWidget {
   const StartupView({super.key});
@@ -16,6 +18,7 @@ class _StartupViewState extends State<StartupView>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  Widget _nextScreen = const LoginView();
 
   @override
   void initState() {
@@ -37,17 +40,39 @@ class _StartupViewState extends State<StartupView>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
     _controller.forward();
-
-    Timer(const Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(_createRoute());
-    });
+    _initApp();
   }
 
-  Route _createRoute() {
+  Future<void> _initApp() async {
+    // Jalankan pengecekan token dan durasi minimum splash screen secara paralel
+    await Future.wait([
+      _checkLoginStatus(),
+      Future.delayed(const Duration(milliseconds: 2500)),
+    ]);
+
+    if (mounted) {
+      Navigator.of(context).pushReplacement(_createRoute(_nextScreen));
+    }
+  }
+
+  Future<void> _checkLoginStatus() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final token = await storage.read(key: 'token');
+      if (token != null && token.isNotEmpty) {
+        setState(() {
+          _nextScreen = const HomeView();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking login status: $e');
+    }
+  }
+
+  Route _createRoute(Widget destination) {
     return PageRouteBuilder(
       transitionDuration: const Duration(milliseconds: 600),
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          const LoginView(),
+      pageBuilder: (context, animation, secondaryAnimation) => destination,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;

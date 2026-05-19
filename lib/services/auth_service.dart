@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:logilearn/services/api_service.dart';
 
 class AuthService {
   static String get baseUrl {
@@ -77,6 +78,8 @@ class AuthService {
       final responseData = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        ApiService.clearCache();
+
         await _storage.write(
           key: "token",
           value: responseData["payload"]["datas"]["token"],
@@ -167,6 +170,7 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    ApiService.clearCache();
     await _storage.deleteAll();
   }
 }

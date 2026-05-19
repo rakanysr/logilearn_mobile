@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgetSoal/question_card.dart' as quiz_widget;
@@ -55,6 +56,8 @@ class _QuizScreenState extends State<QuizScreen> {
   final Map<int, int> _userAnswers = {};
   final Map<int, String> _userEssayAnswers = {};
   TextEditingController? _essayController;
+  int? _attemptId;
+  final List<Future<void>> _activeSubmissions = [];
 
   @override
   void initState() {
@@ -154,14 +157,28 @@ class _QuizScreenState extends State<QuizScreen> {
       final apiService = ApiService();
 
       debugPrint(
-        'Loading questions for level ${widget.levelId} in section ${widget.sectionSlug}',
+        'Loading questions and creating attempt in parallel for level ${widget.levelId} in section ${widget.sectionSlug}',
       );
 
-      final result = await apiService.getSoalsByLevel(
-        widget.sectionSlug,
-        widget.levelId,
-        useCache: true,
-      );
+      final List<Future<Map<String, dynamic>>> futures = [
+        apiService.getSoalsByLevel(
+          widget.sectionSlug,
+          widget.levelId,
+          useCache: true,
+        ),
+        apiService.createAttempt(widget.levelId),
+      ];
+
+      final results = await Future.wait(futures);
+      final result = results[0];
+      final attemptResult = results[1];
+
+      if (attemptResult['success']) {
+        _attemptId = _readAttemptId(attemptResult['data']);
+        debugPrint('✅ Attempt created in background. Attempt ID: $_attemptId');
+      } else {
+        debugPrint('❌ Failed to create attempt in background: ${attemptResult['message']}');
+      }
 
       if (result['success']) {
         final fullResponse = result['data'];
@@ -309,6 +326,52 @@ class _QuizScreenState extends State<QuizScreen> {
     return localScore;
   }
 
+  void prevQuestion() {
+    if (currentIndex > 0 && !_isSubmitting) {
+      setState(() {
+        currentIndex--;
+        if (_userAnswers.containsKey(currentIndex)) {
+          final savedIndex = _userAnswers[currentIndex];
+          selectedIndex = savedIndex == -1 ? null : savedIndex;
+        } else {
+          selectedIndex = null;
+        }
+        essayAnswer = _userEssayAnswers[currentIndex] ?? "";
+        _updateEssayController();
+      });
+    }
+  }
+
+  Future<void> _submitAnswerInBackground(int qIndex) async {
+    final attemptId = _attemptId;
+    if (attemptId == null) {
+      debugPrint('⚠️ Cannot submit answer in background: _attemptId is null');
+      return;
+    }
+
+    final q = questions[qIndex];
+    final apiService = ApiService();
+
+    try {
+      if (q.isEssay) {
+        final answer = _userEssayAnswers[qIndex];
+        if (answer != null && answer.trim().isNotEmpty) {
+          debugPrint('Uploading essay answer in background for question index $qIndex');
+          await apiService.submitJawabanEsai(attemptId, q.id, answer);
+        }
+      } else {
+        final savedSelIndex = _userAnswers[qIndex];
+        if (savedSelIndex != null && savedSelIndex != -1 && q.optionIds != null) {
+          final optId = q.optionIds![savedSelIndex];
+          debugPrint('Uploading PG answer in background for question index $qIndex');
+          await apiService.submitJawabanPG(attemptId, optId);
+        }
+      }
+    } catch (e) {
+      debugPrint('Background submit error: $e');
+    }
+  }
+
   Future<void> nextQuestion() async {
     if (questions.isEmpty || _isSubmitting) return;
 
@@ -319,13 +382,23 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     if (currentIndex < questions.length - 1) {
+      // 1. Save state locally first
       setState(() {
         if (currentQ.isEssay) {
           _userEssayAnswers[currentIndex] = essayAnswer;
         } else {
           _userAnswers[currentIndex] = selectedIndex ?? -1;
         }
+      });
 
+      // 2. Trigger background submission for the current question
+      final qIndexToSubmit = currentIndex;
+      final fut = _submitAnswerInBackground(qIndexToSubmit);
+      _activeSubmissions.add(fut);
+      fut.then((_) => _activeSubmissions.remove(fut));
+
+      // 3. Move to next question immediately
+      setState(() {
         currentIndex++;
 
         if (_userAnswers.containsKey(currentIndex)) {
@@ -341,6 +414,7 @@ class _QuizScreenState extends State<QuizScreen> {
       
       await _saveDraftLocally();
     } else {
+      // Final submission (SELESAI clicked)
       setState(() {
         if (currentQ.isEssay) {
           _userEssayAnswers[currentIndex] = essayAnswer;
@@ -355,39 +429,29 @@ class _QuizScreenState extends State<QuizScreen> {
       try {
         final apiService = ApiService();
 
-        final attemptRes = await apiService.createAttempt(widget.levelId);
-        if (!attemptRes['success']) {
-          throw Exception(attemptRes['message'] ?? 'Gagal membuat attempt di server');
-        }
-
-        final attemptId = _readAttemptId(attemptRes['data']);
-        if (attemptId == null) {
-          throw Exception('Gagal membaca ID attempt dari server');
-        }
-
-        for (int i = 0; i < questions.length; i++) {
-          final q = questions[i];
-          if (q.isEssay) {
-            final answer = _userEssayAnswers[i];
-            if (answer != null && answer.trim().isNotEmpty) {
-              final res = await apiService.submitJawabanEsai(attemptId, q.id, answer);
-              if (!res['success']) {
-                throw Exception('Gagal mengirim jawaban esai ke-${i + 1}: ${res['message']}');
-              }
-            }
-          } else {
-            final savedSelIndex = _userAnswers[i];
-            if (savedSelIndex != null && savedSelIndex != -1 && q.optionIds != null) {
-              final optId = q.optionIds![savedSelIndex];
-              final res = await apiService.submitJawabanPG(attemptId, optId);
-              if (!res['success']) {
-                throw Exception('Gagal mengirim jawaban pilihan ganda ke-${i + 1}: ${res['message']}');
-              }
-            }
+        // 1. Ensure we have an attemptId
+        int? finalAttemptId = _attemptId;
+        if (finalAttemptId == null) {
+          debugPrint('⚠️ No _attemptId found at finalization. Creating attempt now...');
+          final attemptRes = await apiService.createAttempt(widget.levelId);
+          if (!attemptRes['success']) {
+            throw Exception(attemptRes['message'] ?? 'Gagal membuat attempt di server');
           }
+          finalAttemptId = _readAttemptId(attemptRes['data']);
+          if (finalAttemptId == null) {
+            throw Exception('Gagal membaca ID attempt dari server');
+          }
+          _attemptId = finalAttemptId;
         }
 
-        final finalizeRes = await apiService.submitAttempt(attemptId);
+        // 2. Submit the last question and wait for all background tasks to complete
+        await _submitAnswerInBackground(currentIndex);
+        if (_activeSubmissions.isNotEmpty) {
+          await Future.wait(_activeSubmissions);
+        }
+
+        // 3. Finalize the attempt
+        final finalizeRes = await apiService.submitAttempt(finalAttemptId);
         if (!finalizeRes['success']) {
           throw Exception(finalizeRes['message'] ?? 'Gagal memfinalisasi kuis');
         }
@@ -495,14 +559,26 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                Text(_errorMessage ?? 'Menyiapkan Quiz...'),
+                Image.asset('assets/images/Mascot halo.png', height: 120),
+                const SizedBox(height: 24),
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2977FF)),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  _errorMessage ?? 'Menyiapkan Kuis...',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black54,
+                  ),
+                ),
               ],
             ),
           ),
@@ -648,38 +724,86 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
 
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: canContinue ? nextQuestion : null,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              if (currentIndex > 0)
+                Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black54, size: 18),
+                        onPressed: _isSubmitting ? null : prevQuestion,
+                      ),
                     ),
-                    backgroundColor: Colors.blueAccent,
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: canContinue ? nextQuestion : null,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                        )
-                      : Text(
-                          currentIndex == questions.length - 1
-                              ? "SELESAI"
-                              : "LANJUT",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                          backgroundColor: Colors.blueAccent,
                         ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                currentIndex == questions.length - 1
+                                    ? "SELESAI"
+                                    : "LANJUT",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: canContinue ? nextQuestion : null,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      backgroundColor: Colors.blueAccent,
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            currentIndex == questions.length - 1
+                                ? "SELESAI"
+                                : "LANJUT",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
                 ),
-              ),
             ],
           ),
         ),

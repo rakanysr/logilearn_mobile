@@ -265,27 +265,78 @@ class _AccountViewState extends State<AccountView> {
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Keluar'),
-        content: const Text('Apakah Anda yakin ingin keluar?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('BATAL'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await _authService.logout();
-              if (!context.mounted) return;
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginView()),
-                (route) => false,
-              );
-            },
-            child: const Text('YA', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+      barrierDismissible: true,
+      builder: (_) => Center(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.8, end: 1.0),
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutBack,
+          builder: (context, scale, child) {
+            return Transform.scale(
+              scale: scale,
+              child: AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                title: Text(
+                  "Keluar Akun",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                content: Text(
+                  "Apakah Anda yakin ingin keluar dari akun LogiLearn Anda?",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(color: Colors.black54),
+                ),
+                actionsAlignment: MainAxisAlignment.center,
+                actions: [
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      "Batal",
+                      style: GoogleFonts.inter(color: Colors.grey[700], fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      elevation: 0,
+                    ),
+                    onPressed: () async {
+                      await _authService.logout();
+                      if (!context.mounted) return;
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginView()),
+                        (route) => false,
+                      );
+                    },
+                    child: Text(
+                      "Keluar",
+                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
