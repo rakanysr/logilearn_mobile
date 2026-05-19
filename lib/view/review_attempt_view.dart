@@ -349,8 +349,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
               );
             }
 
-            // Level ID check: if we have a current level ID, prefer it but don't require it
-            // This allows showing attempts from any level in the section
+            // Level ID check: require exact level match
             final attemptLevelId = attemptData['id_level'];
             final attemptLevelIdInt = attemptLevelId is int
                 ? attemptLevelId
@@ -367,24 +366,25 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
               '    Checking level ID: Attempt level=$attemptLevelIdInt, Current level=$currentLevelIdInt',
             );
 
+            // If _currentLevelId is null (e.g. newly loaded section from dropdown), take the first attempt of this section
+            if (_currentLevelId == null) {
+              debugPrint('    ✓ Newly loaded section, using first attempt found: ID ${attemptData['id']}');
+              attemptMap = attemptData;
+              _currentLevelId = attemptLevelIdInt;
+              if (_levelsList.isNotEmpty && attemptLevelIdInt != null) {
+                _currentLevelIndex = _levelsList.indexWhere((l) => l['id'] == attemptLevelIdInt);
+                if (_currentLevelIndex == -1) _currentLevelIndex = 0;
+              }
+              break;
+            }
+
             // If level IDs match exactly, this is the best match - use it immediately
-            if (_currentLevelId != null &&
-                attemptLevelIdInt != null &&
+            if (attemptLevelIdInt != null &&
                 currentLevelIdInt != null &&
                 attemptLevelIdInt == currentLevelIdInt) {
               debugPrint('    ✓ EXACT LEVEL MATCH - Using this attempt');
               attemptMap = attemptData;
               break;
-            }
-
-            // Otherwise, if we don't have a match yet, use this attempt from the correct section
-            // (we'll keep looking for an exact level match, but this is our fallback)
-            if (attemptMap == null) {
-              debugPrint(
-                '    ✓ Section match - Will use this if no exact level match found',
-              );
-              attemptMap = attemptData;
-              // Don't break - keep looking for exact level match
             }
           } catch (e) {
             debugPrint(
@@ -918,9 +918,10 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       ),
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
               dropdown_widget.SectionDropdownButton(
                 selectedSection: _selectedSection,
                 selectedTitle: _selectedTitle,
@@ -944,8 +945,11 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                     _attemptData = null;
                     _soals = [];
                     _errorMessage = null;
+                    _currentLevelIndex = 0;
+                    _currentLevelId = null;
                   });
                   // Reload data untuk section yang dipilih
+                  _fetchLevelsForSection();
                   _loadLevelData();
                 },
               ),
@@ -1095,6 +1099,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
               const SizedBox(height: 30),
             ],
           ),
+        ),
         ),
         bottomNavigationBar: BottomNavBar(currentIndex: _currentBottomNavIndex),
       ),

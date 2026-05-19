@@ -141,6 +141,8 @@ class _AttemptHistoryViewState extends State<AttemptHistoryView> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: Text(
           'Riwayat Attempt',
           style: GoogleFonts.inter(

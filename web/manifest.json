@@ -1,6 +1,6 @@
 {
-    "name": "logilearn",
-    "short_name": "logilearn",
+    "name": "LogiLearn",
+    "short_name": "LogiLearn",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

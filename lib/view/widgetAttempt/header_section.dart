@@ -66,29 +66,42 @@ class HeaderSection extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Image.asset(
-                      'assets/images/jempol.png',
-                      width: 200,
-                      height: 200,
-                      fit: BoxFit.contain,
-                    ),
-
-                    Positioned(
-                      bottom: -5,
-                      child: Container(
-                        width: 70,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          shape: BoxShape.rectangle,
-                          borderRadius: BorderRadius.circular(30),
+                SizedBox(
+                  height: 230,
+                  width: 240,
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        bottom: 4,
+                        child: Container(
+                          width: 140,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        bottom: 12,
+                        child: Image.asset(
+                          'assets/images/jempol.png',
+                          width: 230,
+                          height: 230,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 12),
@@ -125,62 +138,42 @@ class HeaderSection extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 // Progress badge
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Shadow di bawah untuk efek 3D
-                    Positioned(
-                      bottom: -4,
-                      child: Container(
-                        width: 90,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: _getSectionColor(
-                            sectionNumber,
-                          ).withValues(alpha: 0.4),
-                          shape: BoxShape.rectangle,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _getSectionColor(sectionNumber),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _getSectionColor(
+                          sectionNumber,
+                        ).withValues(alpha: 0.4),
+                        blurRadius: 14,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      (score != null && score! > 0)
+                          ? '${score!.toStringAsFixed(0)}%'
+                          : '0%',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                    // Lingkaran solid
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _getSectionColor(sectionNumber),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _getSectionColor(
-                              sectionNumber,
-                            ).withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          (score != null && score! > 0)
-                              ? '${score!.toStringAsFixed(0)}%'
-                              : '0%',
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
 
                 // Show message only if section hasn't been attempted yet
                 if (!hasAttempt) ...[
                   const SizedBox(height: 12),
                   const Text(
-                    'Anda Belum Sampai Section Ini',
+                    'Anda Belum Sampai Level Ini',
                     style: TextStyle(
                       fontSize: 20,
                       color: Colors.black,

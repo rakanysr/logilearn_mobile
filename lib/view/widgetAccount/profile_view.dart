@@ -23,6 +23,8 @@ class ProfileView extends StatelessWidget {
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
