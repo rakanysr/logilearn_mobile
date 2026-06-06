@@ -455,7 +455,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getGlobalLeaderboard({int page = 1, int limit = 10}) async {
-    final url = Uri.parse('$baseUrl/leaderboard?page=$page&limit=$limit');
+    final url = Uri.parse('$baseUrl/global/leaderboard?page=$page&limit=$limit');
     try {
       final headers = await _getHeaders();
       final response = await http.get(url, headers: headers);
