@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logilearn/view/login_view.dart';
 import 'package:logilearn/view/home_view.dart';
+import 'package:logilearn/services/api_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class StartupView extends StatefulWidget {
   const StartupView({super.key});
@@ -60,9 +62,25 @@ class _StartupViewState extends State<StartupView>
       const storage = FlutterSecureStorage();
       final token = await storage.read(key: 'token');
       if (token != null && token.isNotEmpty) {
-        setState(() {
-          _nextScreen = const HomeView();
-        });
+        // Verify token with backend to avoid navigating to Home when token is invalid
+        try {
+          final api = ApiService();
+          final profileRes = await api.getProfile();
+          final status = profileRes['status_code'] ?? profileRes['status'] ?? 500;
+          if (status == 200) {
+            setState(() {
+              _nextScreen = const HomeView();
+            });
+          } else {
+            // Token invalid or expired: clear storage and stay on Login
+            await storage.delete(key: 'token');
+            await storage.delete(key: 'id_pelajar');
+            await storage.delete(key: 'nama_pelajar');
+            debugPrint('StartupView: token invalid, redirecting to Login');
+          }
+        } catch (e) {
+          debugPrint('StartupView: error verifying token: $e');
+        }
       }
     } catch (e) {
       debugPrint('Error checking login status: $e');

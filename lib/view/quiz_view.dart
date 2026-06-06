@@ -459,9 +459,23 @@ class _QuizScreenState extends State<QuizScreen> {
         double? finalScore;
         final data = finalizeRes['data'];
         dynamic rawScore;
+        int? xpGained;
+        int? totalXp;
+        bool levelRankUp = false;
+        int? newLevelRank;
+        List<dynamic> newBadges = [];
+
         if (data is Map) {
           if (data['payload'] != null && data['payload']['datas'] != null) {
-            rawScore = data['payload']['datas']['skor'];
+            final datas = data['payload']['datas'] as Map<String, dynamic>;
+            rawScore = datas['skor'];
+            xpGained = datas['xp_gained'] as int?;
+            totalXp = datas['total_xp'] as int?;
+            levelRankUp = (datas['level_rank_up'] == true);
+            newLevelRank = datas['new_level_rank'] as int?;
+            if (datas['new_badges'] is List) {
+              newBadges = datas['new_badges'] as List<dynamic>;
+            }
           } else if (data['skor'] != null) {
             rawScore = data['skor'];
           }
@@ -490,6 +504,11 @@ class _QuizScreenState extends State<QuizScreen> {
               sectionTitle: widget.sectionTitle,
               sectionNumber: widget.sectionNumber,
               levelNumber: widget.levelNumber,
+              xpGained: xpGained,
+              totalXp: totalXp,
+              levelRankUp: levelRankUp,
+              newLevelRank: newLevelRank,
+              newBadges: newBadges,
             ),
           ),
         );

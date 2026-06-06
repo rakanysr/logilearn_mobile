@@ -6,6 +6,7 @@ import 'package:logilearn/view/widgetAccount/change_password_view.dart';
 import 'package:logilearn/view/widgetAccount/profile_view.dart';
 import 'package:logilearn/view/login_view.dart';
 import 'package:logilearn/widget/bottombar.dart';
+import 'package:logilearn/view/leaderboard_view.dart';
 
 class AccountView extends StatefulWidget {
   const AccountView({super.key});
@@ -182,6 +183,14 @@ class _AccountViewState extends State<AccountView> {
                       MaterialPageRoute(
                         builder: (_) => const ChangePasswordView(),
                       ),
+                    ),
+                  ),
+                  _buildMenuItem(
+                    icon: Icons.leaderboard,
+                    text: 'Leaderboard',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LeaderboardView()),
                     ),
                   ),
                   _buildMenuItem(

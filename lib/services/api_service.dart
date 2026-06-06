@@ -411,4 +411,67 @@ class ApiService {
       return {'success': false, 'message': e.toString()};
     }
   }
+
+  Future<Map<String, dynamic>> getStats(int pelajarId) async {
+    final url = Uri.parse('$baseUrl/pelajar/$pelajarId/stats');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      final data = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'status_code': response.statusCode,
+        'data': data,
+        'message': data['message'] ?? 'Gagal memuat statistik',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'status_code': 500,
+        'message': e.toString(),
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> getBadges(int pelajarId) async {
+    final url = Uri.parse('$baseUrl/pelajar/$pelajarId/badges');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      final data = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'status_code': response.statusCode,
+        'data': data,
+        'message': data['message'] ?? 'Gagal memuat badge',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'status_code': 500,
+        'message': e.toString(),
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> getGlobalLeaderboard({int page = 1, int limit = 10}) async {
+    final url = Uri.parse('$baseUrl/leaderboard?page=$page&limit=$limit');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      final data = jsonDecode(response.body);
+      return {
+        'success': response.statusCode == 200,
+        'status_code': response.statusCode,
+        'data': data,
+        'message': data['message'] ?? 'Gagal memuat leaderboard',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'status_code': 500,
+        'message': e.toString(),
+      };
+    }
+  }
 }
