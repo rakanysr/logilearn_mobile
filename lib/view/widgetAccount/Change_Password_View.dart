@@ -18,6 +18,9 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
   final ApiService _apiService = ApiService();
   final AuthService _authService = AuthService();
   bool _isLoading = false;
+  bool _isCurrentPasswordVisible = false;
+  bool _isNewPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   @override
   void dispose() {
@@ -65,49 +68,159 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
       appBar: AppBar(
         title: const Text('Ganti Kata Sandi'),
         backgroundColor: const Color(0xFF2977FF),
+        elevation: 0,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 16),
+              const Text(
+                'Masukkan kata sandi lama dan buat kata sandi baru yang kuat.',
+                style: TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Kata Sandi Lama',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _currentPwdController,
-                obscureText: true,
+                obscureText: !_isCurrentPasswordVisible,
                 decoration: InputDecoration(
-                  labelText: 'Kata sandi lama',
-                  labelStyle: GoogleFonts.inter(),
+                  hintText: 'Masukkan kata sandi lama',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isCurrentPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isCurrentPasswordVisible = !_isCurrentPasswordVisible;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
                 ),
                 validator: (value) => (value == null || value.isEmpty) ? 'Tidak boleh kosong' : null,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              const Text(
+                'Kata Sandi Baru',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _newPwdController,
-                obscureText: true,
+                obscureText: !_isNewPasswordVisible,
                 decoration: InputDecoration(
-                  labelText: 'Kata sandi baru',
-                  labelStyle: GoogleFonts.inter(),
+                  hintText: 'Masukkan kata sandi baru',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isNewPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isNewPasswordVisible = !_isNewPasswordVisible;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
                 ),
-                validator: (value) => (value == null || value.length < 6) ? 'Minimal 6 karakter' : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Tidak boleh kosong';
+                  }
+                  if (value.length < 6) {
+                    return 'Minimal 6 karakter';
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+              const Text(
+                'Min 8 karakter, ada huruf besar & angka',
+                style: TextStyle(fontSize: 12, color: Colors.black45),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Konfirmasi Kata Sandi',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _confirmPwdController,
-                obscureText: true,
+                obscureText: !_isConfirmPasswordVisible,
                 decoration: InputDecoration(
-                  labelText: 'Konfirmasi kata sandi',
-                  labelStyle: GoogleFonts.inter(),
+                  hintText: 'Ulangi kata sandi baru',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
                 ),
-                validator: (value) => (value != _newPwdController.text) ? 'Tidak cocok dengan kata sandi baru' : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Tidak boleh kosong';
+                  }
+                  if (value != _newPwdController.text) {
+                    return 'Tidak cocok dengan kata sandi baru';
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               _isLoading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _changePassword,
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2977FF)),
-                      child: const Text('Simpan'),
+                  ? const Center(child: CircularProgressIndicator())
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _changePassword,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2977FF),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Simpan',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
                     ),
             ],
           ),
