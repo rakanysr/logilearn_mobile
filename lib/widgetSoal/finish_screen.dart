@@ -182,8 +182,15 @@ class _FinishScreenState extends State<FinishScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double percentage =
-        widget.finalPercentage ?? (widget.score / widget.totalQuestions) * 100;
+    final double computedPercentage = widget.totalQuestions > 0
+        ? (widget.score / widget.totalQuestions) * 100
+        : 0;
+    double percentage = widget.finalPercentage ?? computedPercentage;
+
+    if (widget.finalPercentage != null) {
+      percentage = widget.finalPercentage!.clamp(0, 100);
+    }
+
     String imagePath;
     String title;
     String message;
@@ -243,9 +250,7 @@ class _FinishScreenState extends State<FinishScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      widget.finalPercentage != null
-                          ? "Skor: ${widget.finalPercentage!.toStringAsFixed(1)}%"
-                          : "Skor: ${widget.score} / ${widget.totalQuestions}",
+                      "Skor: ${percentage.toStringAsFixed(1)}%",
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
