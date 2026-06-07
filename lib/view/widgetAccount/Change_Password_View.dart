@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:logilearn/services/api_service.dart';
 import 'package:logilearn/services/auth_service.dart';
+import '../login_view.dart';
 
 class ChangePasswordView extends StatefulWidget {
   const ChangePasswordView({super.key});
@@ -50,7 +51,10 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
       if (response['status_code'] == 200) {
         await _authService.logout();
         if (mounted) {
-          nav.popUntil((route) => route.isFirst);
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginView()),
+            (route) => false,
+          );
         }
       }
     } catch (e) {
