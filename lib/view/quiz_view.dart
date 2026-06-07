@@ -57,8 +57,6 @@ class _QuizScreenState extends State<QuizScreen> {
   final Map<int, String> _userEssayAnswers = {};
   TextEditingController? _essayController;
   int? _attemptId;
-  final List<Future<void>> _activeSubmissions = [];
-
   @override
   void initState() {
     super.initState();
@@ -157,28 +155,14 @@ class _QuizScreenState extends State<QuizScreen> {
       final apiService = ApiService();
 
       debugPrint(
-        'Loading questions and creating attempt in parallel for level ${widget.levelId} in section ${widget.sectionSlug}',
+        'Loading questions for level ${widget.levelId} in section ${widget.sectionSlug}',
       );
 
-      final List<Future<Map<String, dynamic>>> futures = [
-        apiService.getSoalsByLevel(
-          widget.sectionSlug,
-          widget.levelId,
-          useCache: true,
-        ),
-        apiService.createAttempt(widget.levelId),
-      ];
-
-      final results = await Future.wait(futures);
-      final result = results[0];
-      final attemptResult = results[1];
-
-      if (attemptResult['success']) {
-        _attemptId = _readAttemptId(attemptResult['data']);
-        debugPrint('✅ Attempt created in background. Attempt ID: $_attemptId');
-      } else {
-        debugPrint('❌ Failed to create attempt in background: ${attemptResult['message']}');
-      }
+      final result = await apiService.getSoalsByLevel(
+        widget.sectionSlug,
+        widget.levelId,
+        useCache: true,
+      );
 
       if (result['success']) {
         final fullResponse = result['data'];
@@ -342,13 +326,7 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
-  Future<void> _submitAnswerInBackground(int qIndex) async {
-    final attemptId = _attemptId;
-    if (attemptId == null) {
-      debugPrint('⚠️ Cannot submit answer in background: _attemptId is null');
-      return;
-    }
-
+  Future<void> _submitAnswer(int attemptId, int qIndex) async {
     final q = questions[qIndex];
     final apiService = ApiService();
 
@@ -356,19 +334,32 @@ class _QuizScreenState extends State<QuizScreen> {
       if (q.isEssay) {
         final answer = _userEssayAnswers[qIndex];
         if (answer != null && answer.trim().isNotEmpty) {
-          debugPrint('Uploading essay answer in background for question index $qIndex');
+          debugPrint('Uploading essay answer for question index $qIndex');
           await apiService.submitJawabanEsai(attemptId, q.id, answer);
         }
       } else {
         final savedSelIndex = _userAnswers[qIndex];
         if (savedSelIndex != null && savedSelIndex != -1 && q.optionIds != null) {
           final optId = q.optionIds![savedSelIndex];
-          debugPrint('Uploading PG answer in background for question index $qIndex');
+          debugPrint('Uploading PG answer for question index $qIndex');
           await apiService.submitJawabanPG(attemptId, optId);
         }
       }
     } catch (e) {
-      debugPrint('Background submit error: $e');
+      debugPrint('Submit answer error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _submitAllAnswers(int attemptId) async {
+    final List<Future<void>> submissions = [];
+
+    for (int i = 0; i < questions.length; i++) {
+      submissions.add(_submitAnswer(attemptId, i));
+    }
+
+    if (submissions.isNotEmpty) {
+      await Future.wait(submissions);
     }
   }
 
@@ -391,13 +382,7 @@ class _QuizScreenState extends State<QuizScreen> {
         }
       });
 
-      // 2. Trigger background submission for the current question
-      final qIndexToSubmit = currentIndex;
-      final fut = _submitAnswerInBackground(qIndexToSubmit);
-      _activeSubmissions.add(fut);
-      fut.then((_) => _activeSubmissions.remove(fut));
-
-      // 3. Move to next question immediately
+      // 2. Move to next question immediately
       setState(() {
         currentIndex++;
 
@@ -444,11 +429,8 @@ class _QuizScreenState extends State<QuizScreen> {
           _attemptId = finalAttemptId;
         }
 
-        // 2. Submit the last question and wait for all background tasks to complete
-        await _submitAnswerInBackground(currentIndex);
-        if (_activeSubmissions.isNotEmpty) {
-          await Future.wait(_activeSubmissions);
-        }
+        // 2. Submit all collected answers for this attempt
+        await _submitAllAnswers(finalAttemptId);
 
         // 3. Finalize the attempt
         final finalizeRes = await apiService.submitAttempt(finalAttemptId);
