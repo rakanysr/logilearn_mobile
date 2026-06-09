@@ -6,7 +6,9 @@ import 'package:logilearn/view/quiz_view.dart';
 import 'package:logilearn/widget/bottombar.dart';
 
 class HomeView extends StatefulWidget {
-  const HomeView({super.key});
+  final bool showWalkthrough;
+
+  const HomeView({super.key, this.showWalkthrough = false});
 
   @override
   State<HomeView> createState() => _HomeViewState();
@@ -21,6 +23,45 @@ class _HomeViewState extends State<HomeView> {
   bool _isNavigating = false;
   bool _isLoadingLevels = false;
   int? _loadingLevelIndex;
+  bool _showWalkthrough = false;
+  int _walkthroughStep = 0;
+
+  final GlobalKey _sectionCardKey = GlobalKey();
+  final GlobalKey _progressCardKey = GlobalKey();
+  final GlobalKey _firstLevelKey = GlobalKey();
+  final GlobalKey _bottomNavKey = GlobalKey();
+
+  Rect? _sectionCardRect;
+  Rect? _progressCardRect;
+  Rect? _firstLevelRect;
+  Rect? _bottomNavRect;
+
+  final List<Map<String, String>> _walkthroughItems = [
+    {
+      'title': 'Pilih Section',
+      'subtitle': 'Section adalah kelompok latihan.',
+      'description':
+          'Gunakan panel section untuk memilih tema belajar dan membuka level dari setiap section.',
+    },
+    {
+      'title': 'Lihat Progress',
+      'subtitle': 'Lihat progres belajar kamu.',
+      'description':
+          'Di bagian ini kamu bisa melihat persentase progress dan level yang sudah dibuka.',
+    },
+    {
+      'title': 'Kerjakan Level',
+      'subtitle': 'Pilih level untuk mulai belajar.',
+      'description':
+          'Ketuk level yang terbuka untuk mulai menjawab soal dan kumpulkan skor minimal 75.',
+    },
+    {
+      'title': 'Menu Akun',
+      'subtitle': 'Kelola akun dan pengaturan.',
+      'description':
+          'Gunakan menu Akun untuk ganti password, melihat profil, atau keluar dari aplikasi.',
+    },
+  ];
 
   List<Map<String, dynamic>> _sections = [];
   List<Map<String, dynamic>> _levels = [];
@@ -29,8 +70,15 @@ class _HomeViewState extends State<HomeView> {
   @override
   void initState() {
     super.initState();
+    _showWalkthrough = widget.showWalkthrough;
     _loadUserData();
     _fetchSections();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateHighlightRects();
+        _ensureWalkthroughState();
+      }
+    });
   }
 
   @override
@@ -146,6 +194,8 @@ class _HomeViewState extends State<HomeView> {
       setState(() {
         _isLoading = false;
       });
+      _ensureWalkthroughState();
+      _scheduleHighlightUpdate();
     }
   }
 
@@ -199,6 +249,7 @@ class _HomeViewState extends State<HomeView> {
               );
             }
           });
+          _scheduleHighlightUpdate();
         }
       } else {
         debugPrint('Failed to load levels: ${result['message']}');
@@ -448,6 +499,94 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
+  void _dismissWalkthrough() {
+    if (mounted) {
+      setState(() {
+        _showWalkthrough = false;
+      });
+    }
+  }
+
+  void _ensureWalkthroughState() {
+    if (!_showWalkthrough) return;
+
+    if (_walkthroughStep == 0 && !_isDropdownOpen) {
+      setState(() {
+        _isDropdownOpen = true;
+      });
+    }
+
+    if (_walkthroughStep != 0 && _isDropdownOpen) {
+      setState(() {
+        _isDropdownOpen = false;
+      });
+    }
+  }
+
+  void _scheduleHighlightUpdate() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateHighlightRects();
+      }
+    });
+  }
+
+  void _nextWalkthroughStep() {
+    if (_walkthroughStep < _walkthroughItems.length - 1) {
+      setState(() {
+        _walkthroughStep += 1;
+      });
+      _ensureWalkthroughState();
+      _scheduleHighlightUpdate();
+    } else {
+      _dismissWalkthrough();
+    }
+  }
+
+  Rect? get _currentWalkthroughRect {
+    switch (_walkthroughStep) {
+      case 0:
+        return _sectionCardRect;
+      case 1:
+        return _progressCardRect;
+      case 2:
+        return _firstLevelRect;
+      case 3:
+        return _bottomNavRect;
+      default:
+        return null;
+    }
+  }
+
+  void _updateHighlightRects() {
+    final screen = _sectionCardKey.currentContext?.findRenderObject() as RenderBox?;
+    final progress = _progressCardKey.currentContext?.findRenderObject() as RenderBox?;
+    final firstLevel = _firstLevelKey.currentContext?.findRenderObject() as RenderBox?;
+    final bottomNav = _bottomNavKey.currentContext?.findRenderObject() as RenderBox?;
+
+    final sectionRect = screen != null
+        ? screen.localToGlobal(Offset.zero) & screen.size
+        : null;
+    final progressRect = progress != null
+        ? progress.localToGlobal(Offset.zero) & progress.size
+        : null;
+    final firstLevelRect = firstLevel != null
+        ? firstLevel.localToGlobal(Offset.zero) & firstLevel.size
+        : null;
+    final bottomNavRect = bottomNav != null
+        ? bottomNav.localToGlobal(Offset.zero) & bottomNav.size
+        : null;
+
+    if (mounted) {
+      setState(() {
+        _sectionCardRect = sectionRect;
+        _progressCardRect = progressRect;
+        _firstLevelRect = firstLevelRect;
+        _bottomNavRect = bottomNavRect;
+      });
+    }
+  }
+
   void _navigateToLevelDetail(int levelIndex) async {
     if (_isNavigating) return;
 
@@ -691,6 +830,7 @@ class _HomeViewState extends State<HomeView> {
                   ),
 
                   Container(
+                    key: _sectionCardKey,
                     width: screenWidth,
                     margin: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -764,6 +904,7 @@ class _HomeViewState extends State<HomeView> {
                   const SizedBox(height: 12),
 
                   Padding(
+                    key: _progressCardKey,
                     padding: const EdgeInsets.symmetric(horizontal: 40.0),
                     child: Column(
                       children: [
@@ -877,6 +1018,7 @@ class _HomeViewState extends State<HomeView> {
                                   : 0.0;
 
                               return Padding(
+                                key: index == 0 ? _firstLevelKey : null,
                                 padding: const EdgeInsets.only(bottom: 20.0),
                                 child: Transform.translate(
                                   offset: Offset(dx, 0),
@@ -1015,6 +1157,134 @@ class _HomeViewState extends State<HomeView> {
               ),
             ),
 
+            if (_showWalkthrough)
+              Positioned.fill(
+                child: Stack(
+                  children: [
+                    IgnorePointer(
+                      ignoring: true,
+                      child: Container(
+                        color: Colors.black.withOpacity(0.55),
+                      ),
+                    ),
+                    if (_currentWalkthroughRect != null)
+                      Positioned.fromRect(
+                        rect: _currentWalkthroughRect!.inflate(10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: const Color(0xFF2977FF),
+                              width: 3,
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                            color: Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      left: 20,
+                      right: 20,
+                      bottom: 40,
+                      child: IgnorePointer(
+                        ignoring: false,
+                        child: Container(
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _walkthroughItems[_walkthroughStep]['title']!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                _walkthroughItems[_walkthroughStep]['subtitle']!,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _walkthroughItems[_walkthroughStep]['description']!,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                  height: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  TextButton(
+                                    onPressed: _dismissWalkthrough,
+                                    child: const Text(
+                                      'Dismiss',
+                                      style: TextStyle(
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Row(
+                                    children: List.generate(
+                                      _walkthroughItems.length,
+                                      (index) => Container(
+                                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                                        width: _walkthroughStep == index ? 12 : 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: _walkthroughStep == index
+                                              ? const Color(0xFF2977FF)
+                                              : Colors.grey.shade300,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: _nextWalkthroughStep,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF2977FF),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _walkthroughStep == _walkthroughItems.length - 1
+                                          ? 'Selesai'
+                                          : 'Next',
+                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             if (_isDropdownOpen)
               Positioned(
                 top: 55,
@@ -1110,7 +1380,10 @@ class _HomeViewState extends State<HomeView> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavBar(currentIndex: _currentBottomNavIndex),
+      bottomNavigationBar: KeyedSubtree(
+        key: _bottomNavKey,
+        child: BottomNavBar(currentIndex: _currentBottomNavIndex),
+      ),
     );
   }
 }
