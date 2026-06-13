@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:logilearn/main.dart';
 
 void main() {
+  setUp(() async {
+    FlutterSecureStorage.setMockInitialValues({});
+    dotenv.loadFromString(envString: 'VITE_API_URL=http://localhost:3030');
+  });
+
   testWidgets('shows splash then login form', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -17,7 +24,12 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
 
-    expect(find.text('Selamat Datang di LogiLearn!'), findsOneWidget);
+    final finder = find.text('Selamat Datang di LogiLearn!');
+    if (finder.evaluate().isEmpty) {
+      debugDumpApp();
+    }
+
+    expect(finder, findsOneWidget);
     expect(
       find.widgetWithText(TextFormField, 'Masukkan Username Anda'),
       findsOneWidget,
@@ -47,3 +59,4 @@ void main() {
     expect(find.text('Username dan password wajib diisi'), findsOneWidget);
   });
 }
+

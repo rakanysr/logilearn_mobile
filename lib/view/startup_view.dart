@@ -4,8 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logilearn/view/login_view.dart';
 import 'package:logilearn/view/home_view.dart';
-import 'package:logilearn/services/api_service.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class StartupView extends StatefulWidget {
   const StartupView({super.key});
