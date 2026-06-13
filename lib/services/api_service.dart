@@ -373,8 +373,11 @@ class ApiService {
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {'success': true, 'data': data};
+        final body = jsonDecode(response.body);
+        if (body is Map && body['payload'] is Map && body['payload']['datas'] != null) {
+          return {'success': true, 'data': body['payload']['datas']};
+        }
+        return {'success': true, 'data': body};
       } else {
         return {'success': false, 'message': 'Failed to fetch attempt details'};
       }

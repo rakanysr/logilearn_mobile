@@ -119,10 +119,13 @@ class _AttemptHistoryViewState extends State<AttemptHistoryView> {
         ? Map<String, dynamic>.from(level['sections'] as Map)
         : <String, dynamic>{};
 
+    final attemptId = _asInt(attempt['id']) ?? 0;
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ReviewAttemptView(
+          attemptId: attemptId,
           sectionSlug: section['slug']?.toString() ?? 'section-1',
           levelId: _asInt(attempt['id_level'] ?? level['id']) ?? 1,
           sectionTitle:

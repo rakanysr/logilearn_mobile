@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'home_view.dart';
 import 'login_view.dart';
 import '../services/auth_service.dart';
 
@@ -36,21 +37,44 @@ class _RegisterViewState extends State<RegisterView> {
     });
 
     if (result['success']) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Registrasi Berhasil! Silakan Login.'),
-          backgroundColor: Color(0xFF2977FF),
-          duration: const Duration(seconds: 2),
-        ),
+      final loginResult = await _authService.loginPelajar(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
       );
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginView()),
-          );
-        }
-      });
+
+      if (!mounted) return;
+
+      if (loginResult['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Registrasi berhasil! Selamat datang.'),
+            backgroundColor: Color(0xFF2977FF),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HomeView(showWalkthrough: true),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(loginResult['message'] ?? 'Login otomatis gagal'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginView()),
+            );
+          }
+        });
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
