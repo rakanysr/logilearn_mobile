@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:logilearn/services/api_service.dart';
 import 'package:logilearn/services/auth_service.dart';
 import '../login_view.dart';
@@ -35,7 +34,6 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     final messenger = ScaffoldMessenger.of(context);
-    final nav = Navigator.of(context);
     try {
       final response = await _apiService.changePassword(
         _currentPwdController.text.trim(),
@@ -45,7 +43,9 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(response['message'] ?? 'Password changed'),
-          backgroundColor: response['status_code'] == 200 ? Colors.green : Colors.red,
+          backgroundColor: response['status_code'] == 200
+              ? Colors.green
+              : Colors.red,
         ),
       );
       if (response['status_code'] == 200) {
@@ -58,9 +58,14 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Terjadi kesalahan, coba lagi'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Terjadi kesalahan, coba lagi'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -89,7 +94,11 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
               const SizedBox(height: 24),
               const Text(
                 'Kata Sandi Lama',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -100,7 +109,9 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isCurrentPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      _isCurrentPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -117,12 +128,18 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                     borderSide: BorderSide(color: Colors.grey.shade300),
                   ),
                 ),
-                validator: (value) => (value == null || value.isEmpty) ? 'Tidak boleh kosong' : null,
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Tidak boleh kosong'
+                    : null,
               ),
               const SizedBox(height: 16),
               const Text(
                 'Kata Sandi Baru',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -133,7 +150,9 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isNewPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      _isNewPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -168,7 +187,11 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
               const SizedBox(height: 16),
               const Text(
                 'Konfirmasi Kata Sandi',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black54,
+                ),
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -179,7 +202,9 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      _isConfirmPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
@@ -222,7 +247,10 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                         ),
                         child: const Text(
                           'Simpan',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),

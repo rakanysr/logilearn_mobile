@@ -1164,7 +1164,7 @@ class _HomeViewState extends State<HomeView> {
                     IgnorePointer(
                       ignoring: true,
                       child: Container(
-                        color: Colors.black.withOpacity(0.55),
+                        color: Colors.black.withValues(alpha: 0.55),
                       ),
                     ),
                     if (_currentWalkthroughRect != null)
@@ -1194,7 +1194,7 @@ class _HomeViewState extends State<HomeView> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               ),
