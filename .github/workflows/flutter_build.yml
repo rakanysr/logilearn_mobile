@@ -6,6 +6,8 @@ on:
       - main
       - master
       - fix
+    tags:
+      - 'v*' # Trigger when a tag starting with v is pushed, e.g. v1.0.0
   pull_request:
     branches:
       - main
@@ -125,3 +127,50 @@ jobs:
             build/ios/ipa/*.ipa
             build/ios/archive/*.xcarchive
           if-no-files-found: warn
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-apk, build-ipa]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download APK Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+          path: build-artifacts/
+
+      - name: Download IPA/Archive Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-ipa-archive
+          path: build-artifacts/
+        continue-on-error: true
+
+      # Zip the .xcarchive directory so it can be uploaded as a single asset file
+      - name: Zip xcarchive (iOS)
+        run: |
+          if [ -d "build-artifacts" ]; then
+            cd build-artifacts
+            find . -name "*.xcarchive" -exec zip -r Runner.xcarchive.zip {} \;
+          fi
+        shell: bash
+        continue-on-error: true
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build-artifacts/app-release.apk
+            build-artifacts/*.ipa
+            build-artifacts/*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
