@@ -313,6 +313,40 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> submitBatchAnswers(
+    int attemptId,
+    List<Map<String, dynamic>> answers,
+  ) async {
+    final url = Uri.parse('$baseUrl/attempts/$attemptId/submit-batch');
+    try {
+      final headers = await _getHeaders();
+      debugPrint('Submitting Batch Answers to: $url');
+      debugPrint('Payload: ${jsonEncode({'answers': answers})}');
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({'answers': answers}),
+      );
+
+      debugPrint('Batch Response status: ${response.statusCode}');
+      debugPrint('Batch Response body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return {'success': true, 'data': body};
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to submit batch answers: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      debugPrint('Exception in submitBatchAnswers: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   Future<Map<String, dynamic>> submitAttempt(int attemptId) async {
     final url = Uri.parse('$baseUrl/attempts/submit');
     try {

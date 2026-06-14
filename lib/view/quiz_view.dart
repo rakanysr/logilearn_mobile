@@ -70,9 +70,13 @@ class _QuizScreenState extends State<QuizScreen> {
   Future<void> _saveDraftLocally() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
-      final stringUserAnswers = _userAnswers.map((key, value) => MapEntry(key.toString(), value));
-      final stringEssayAnswers = _userEssayAnswers.map((key, value) => MapEntry(key.toString(), value));
+
+      final stringUserAnswers = _userAnswers.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+      final stringEssayAnswers = _userEssayAnswers.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
 
       final draftData = {
         'currentIndex': currentIndex,
@@ -93,11 +97,12 @@ class _QuizScreenState extends State<QuizScreen> {
       final draftString = prefs.getString(_getDraftKey());
       if (draftString != null) {
         final draftData = jsonDecode(draftString) as Map<String, dynamic>;
-        
+
         setState(() {
           currentIndex = draftData['currentIndex'] as int? ?? 0;
-          
-          final rawAnswers = draftData['userAnswers'] as Map<String, dynamic>? ?? {};
+
+          final rawAnswers =
+              draftData['userAnswers'] as Map<String, dynamic>? ?? {};
           rawAnswers.forEach((key, value) {
             final intKey = int.tryParse(key);
             if (intKey != null && value is int) {
@@ -105,7 +110,8 @@ class _QuizScreenState extends State<QuizScreen> {
             }
           });
 
-          final rawEssayAnswers = draftData['userEssayAnswers'] as Map<String, dynamic>? ?? {};
+          final rawEssayAnswers =
+              draftData['userEssayAnswers'] as Map<String, dynamic>? ?? {};
           rawEssayAnswers.forEach((key, value) {
             final intKey = int.tryParse(key);
             if (intKey != null && value is String) {
@@ -122,7 +128,9 @@ class _QuizScreenState extends State<QuizScreen> {
           essayAnswer = _userEssayAnswers[currentIndex] ?? "";
           _updateEssayController();
         });
-        debugPrint('💾 Draft loaded successfully for level ${widget.levelId}. Resuming at question $currentIndex.');
+        debugPrint(
+          '💾 Draft loaded successfully for level ${widget.levelId}. Resuming at question $currentIndex.',
+        );
       }
     } catch (e) {
       debugPrint('❌ Error loading draft: $e');
@@ -243,7 +251,7 @@ class _QuizScreenState extends State<QuizScreen> {
             _isLoading = false;
           });
           debugPrint('Loaded ${questions.length} questions');
-          
+
           await _loadDraftLocally();
         } else {
           setState(() {
@@ -326,41 +334,40 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
-  Future<void> _submitAnswer(int attemptId, int qIndex) async {
-    final q = questions[qIndex];
-    final apiService = ApiService();
-
-    try {
-      if (q.isEssay) {
-        final answer = _userEssayAnswers[qIndex];
-        if (answer != null && answer.trim().isNotEmpty) {
-          debugPrint('Uploading essay answer for question index $qIndex');
-          await apiService.submitJawabanEsai(attemptId, q.id, answer);
-        }
-      } else {
-        final savedSelIndex = _userAnswers[qIndex];
-        if (savedSelIndex != null && savedSelIndex != -1 && q.optionIds != null) {
-          final optId = q.optionIds![savedSelIndex];
-          debugPrint('Uploading PG answer for question index $qIndex');
-          await apiService.submitJawabanPG(attemptId, optId);
-        }
-      }
-    } catch (e) {
-      debugPrint('Submit answer error: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> _submitAllAnswers(int attemptId) async {
-    final List<Future<void>> submissions = [];
+  Future<Map<String, dynamic>> _submitBatch(int attemptId) async {
+    final List<Map<String, dynamic>> answersPayload = [];
 
     for (int i = 0; i < questions.length; i++) {
-      submissions.add(_submitAnswer(attemptId, i));
+      final q = questions[i];
+      if (q.isEssay) {
+        final answer = _userEssayAnswers[i];
+        if (answer != null && answer.trim().isNotEmpty) {
+          answersPayload.add({
+            'tipe': 'esai',
+            'idSoal': q.id,
+            'jawaban': answer,
+          });
+        }
+      } else {
+        final savedSelIndex = _userAnswers[i];
+        if (savedSelIndex != null &&
+            savedSelIndex != -1 &&
+            q.optionIds != null) {
+          final optId = q.optionIds![savedSelIndex];
+          answersPayload.add({'tipe': 'pg', 'idOpsi': optId});
+        }
+      }
     }
 
-    if (submissions.isNotEmpty) {
-      await Future.wait(submissions);
+    final apiService = ApiService();
+    final result = await apiService.submitBatchAnswers(
+      attemptId,
+      answersPayload,
+    );
+    if (!result['success']) {
+      throw Exception(result['message'] ?? 'Gagal mengirim jawaban kuis');
     }
+    return result['data'];
   }
 
   Future<void> nextQuestion() async {
@@ -396,7 +403,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
         _updateEssayController();
       });
-      
+
       await _saveDraftLocally();
     } else {
       // Final submission (SELESAI clicked)
@@ -417,10 +424,14 @@ class _QuizScreenState extends State<QuizScreen> {
         // 1. Ensure we have an attemptId
         int? finalAttemptId = _attemptId;
         if (finalAttemptId == null) {
-          debugPrint('⚠️ No _attemptId found at finalization. Creating attempt now...');
+          debugPrint(
+            '⚠️ No _attemptId found at finalization. Creating attempt now...',
+          );
           final attemptRes = await apiService.createAttempt(widget.levelId);
           if (!attemptRes['success']) {
-            throw Exception(attemptRes['message'] ?? 'Gagal membuat attempt di server');
+            throw Exception(
+              attemptRes['message'] ?? 'Gagal membuat attempt di server',
+            );
           }
           finalAttemptId = _readAttemptId(attemptRes['data']);
           if (finalAttemptId == null) {
@@ -429,17 +440,11 @@ class _QuizScreenState extends State<QuizScreen> {
           _attemptId = finalAttemptId;
         }
 
-        // 2. Submit all collected answers for this attempt
-        await _submitAllAnswers(finalAttemptId);
-
-        // 3. Finalize the attempt
-        final finalizeRes = await apiService.submitAttempt(finalAttemptId);
-        if (!finalizeRes['success']) {
-          throw Exception(finalizeRes['message'] ?? 'Gagal memfinalisasi kuis');
-        }
+        // 2. Submit batch answers and finalize (1 request total)
+        final batchResultData = await _submitBatch(finalAttemptId);
 
         double? finalScore;
-        final data = finalizeRes['data'];
+        final data = batchResultData;
         dynamic rawScore;
         int? xpGained;
         int? totalXp;
@@ -447,19 +452,24 @@ class _QuizScreenState extends State<QuizScreen> {
         int? newLevelRank;
         List<dynamic> newBadges = [];
 
-        if (data is Map) {
-          if (data['payload'] != null && data['payload']['datas'] != null) {
-            final datas = data['payload']['datas'] as Map<String, dynamic>;
-            rawScore = datas['skor'];
-            xpGained = datas['xp_gained'] as int?;
-            totalXp = datas['total_xp'] as int?;
-            levelRankUp = (datas['level_rank_up'] == true);
-            newLevelRank = datas['new_level_rank'] as int?;
-            if (datas['new_badges'] is List) {
-              newBadges = datas['new_badges'] as List<dynamic>;
-            }
-          } else if (data['skor'] != null) {
-            rawScore = data['skor'];
+        if (data['payload'] != null && data['payload']['datas'] != null) {
+          final datas = data['payload']['datas'] as Map<String, dynamic>;
+          rawScore = datas['skor'];
+          xpGained = datas['xp_gained'] as int?;
+          totalXp = datas['total_xp'] as int?;
+          levelRankUp = (datas['level_rank_up'] == true);
+          newLevelRank = datas['new_level_rank'] as int?;
+          if (datas['new_badges'] is List) {
+            newBadges = datas['new_badges'] as List<dynamic>;
+          }
+        } else if (data['skor'] != null) {
+          rawScore = data['skor'];
+          xpGained = data['xp_gained'] as int?;
+          totalXp = data['total_xp'] as int?;
+          levelRankUp = (data['level_rank_up'] == true);
+          newLevelRank = data['new_level_rank'] as int?;
+          if (data['new_badges'] is List) {
+            newBadges = data['new_badges'] as List<dynamic>;
           }
         }
 
@@ -502,7 +512,9 @@ class _QuizScreenState extends State<QuizScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Terjadi kendala pengiriman: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Terjadi kendala pengiriman: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -663,7 +675,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              
+
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -688,7 +700,9 @@ class _QuizScreenState extends State<QuizScreen> {
                               },
                               child: Container(
                                 margin: const EdgeInsets.symmetric(vertical: 6),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 width: double.infinity,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
@@ -731,10 +745,17 @@ class _QuizScreenState extends State<QuizScreen> {
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                        border: Border.all(
+                          color: Colors.grey.shade300,
+                          width: 1.5,
+                        ),
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black54, size: 18),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.black54,
+                          size: 18,
+                        ),
                         onPressed: _isSubmitting ? null : prevQuestion,
                       ),
                     ),
