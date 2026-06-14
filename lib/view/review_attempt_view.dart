@@ -37,7 +37,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
   String _selectedSection = 'Section 1, Level 1';
   String _selectedTitle = 'LOGIKA DASAR';
   int _selectedSectionNumber = 1; // Track selected section number
-  final int _currentBottomNavIndex = 1;
+  final int _currentBottomNavIndex = 2;
   bool _isLoading = true;
   List<Map<String, dynamic>> _soals = [];
   Map<String, dynamic>? _attemptData; // Store attempt data
@@ -60,8 +60,59 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
     _selectedTitle = widget.sectionTitle;
     _selectedSectionNumber = widget.sectionNumber;
     _currentLevelId = widget.levelId; // Initialize with widget level ID
-    _fetchLevelsForSection(); // Fetch levels first
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await _fetchLevelsForSection();
     _loadLevelData();
+  }
+  List<dynamic> _extractList(dynamic response) {
+    if (response is List) return response;
+    if (response is Map &&
+        response['payload'] is Map &&
+        response['payload']['datas'] is List) {
+      return response['payload']['datas'] as List;
+    }
+    if (response is Map && response['datas'] is List) {
+      return response['datas'] as List;
+    }
+    return [];
+  }
+
+  void _populateSectionsList(Map<String, dynamic> sectionsResult) {
+    final sectionsList = <Map<String, dynamic>>[];
+    try {
+      if (sectionsResult['success']) {
+        final sectionsResponse = sectionsResult['data'];
+        List<dynamic> sectionsData = [];
+
+        if (sectionsResponse is Map &&
+            sectionsResponse['payload'] is Map &&
+            sectionsResponse['payload']['datas'] is List) {
+          sectionsData = sectionsResponse['payload']['datas'];
+        } else if (sectionsResponse is List) {
+          sectionsData = sectionsResponse;
+        }
+
+        for (var i = 0; i < sectionsData.length; i++) {
+          final section = sectionsData[i] is Map<String, dynamic>
+              ? sectionsData[i]
+              : Map<String, dynamic>.from(sectionsData[i] as Map);
+          sectionsList.add({
+            'id': section['id'],
+            'nama': section['nama'] ?? '',
+            'slug': section['slug'] ?? 'section-${i + 1}',
+            'sectionNumber': i + 1,
+          });
+        }
+        setState(() {
+          _sectionsList = sectionsList;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching sections: $e');
+    }
   }
 
   Future<void> _loadLevelData() async {
@@ -89,8 +140,64 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       final pelajarId = int.tryParse(pelajarIdStr) ?? 0;
       debugPrint('=== Loading attempt data for pelajar: $pelajarId ===');
 
+      int attemptIdToFetch = widget.attemptId;
+      if (_currentLevelId != null && _currentLevelId != widget.levelId) {
+        final attemptsResult = await apiService.getAttemptsByPelajarId(pelajarId);
+        if (attemptsResult['success']) {
+          final List<dynamic> rawList = _extractList(attemptsResult['data']);
+          final List<Map<String, dynamic>> matchedAttempts = rawList
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) {
+                final itemLevelId = item['id_level'] ?? (item['levels'] is Map ? item['levels']['id'] : null);
+                final parsedItemLevelId = int.tryParse(itemLevelId?.toString() ?? '');
+                return parsedItemLevelId == _currentLevelId;
+              })
+              .toList();
+
+          if (matchedAttempts.isNotEmpty) {
+            matchedAttempts.sort((a, b) {
+              final aId = int.tryParse(a['id']?.toString() ?? '') ?? 0;
+              final bId = int.tryParse(b['id']?.toString() ?? '') ?? 0;
+              return bId.compareTo(aId);
+            });
+            attemptIdToFetch = int.tryParse(matchedAttempts.first['id']?.toString() ?? '') ?? 0;
+          } else {
+            // Load sections first to populate dropdown/headers
+            final sectionsResult = await apiService.getSections();
+            _populateSectionsList(sectionsResult);
+
+            String levelName = 'Level 1';
+            if (_levelsList.isNotEmpty && _currentLevelIndex >= 0 && _currentLevelIndex < _levelsList.length) {
+              levelName = _levelsList[_currentLevelIndex]['nama'] ?? 'Level 1';
+            }
+
+            final currentSec = _sectionsList.firstWhere(
+              (s) => s['sectionNumber'] == _selectedSectionNumber,
+              orElse: () => {'nama': widget.sectionTitle},
+            );
+            final sectionName = currentSec['nama'] ?? widget.sectionTitle;
+
+            setState(() {
+              _attemptData = null;
+              _soals = [];
+              _selectedSection = 'Section $_selectedSectionNumber, $levelName';
+              _selectedTitle = sectionName.toUpperCase();
+              _isLoading = false;
+            });
+            return;
+          }
+        } else {
+          setState(() {
+            _errorMessage = 'Gagal memuat history attempt untuk level ini.';
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
       final results = await Future.wait([
-        apiService.getAttemptById(widget.attemptId),
+        apiService.getAttemptById(attemptIdToFetch),
         apiService.getSections(),
       ]);
 
@@ -131,38 +238,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       }
 
       // Build sections list from API result
-      final sectionsList = <Map<String, dynamic>>[];
-      try {
-        if (sectionsResult['success']) {
-          final sectionsResponse = sectionsResult['data'];
-          List<dynamic> sectionsData = [];
-
-          if (sectionsResponse is Map &&
-              sectionsResponse['payload'] is Map &&
-              sectionsResponse['payload']['datas'] is List) {
-            sectionsData = sectionsResponse['payload']['datas'];
-          } else if (sectionsResponse is List) {
-            sectionsData = sectionsResponse;
-          }
-
-          for (var i = 0; i < sectionsData.length; i++) {
-            final section = sectionsData[i] is Map<String, dynamic>
-                ? sectionsData[i]
-                : Map<String, dynamic>.from(sectionsData[i] as Map);
-            sectionsList.add({
-              'id': section['id'],
-              'nama': section['nama'] ?? '',
-              'slug': section['slug'] ?? 'section-${i + 1}',
-              'sectionNumber': i + 1,
-            });
-          }
-          setState(() {
-            _sectionsList = sectionsList;
-          });
-        }
-      } catch (e) {
-        debugPrint('Error fetching sections: $e');
-      }
+      _populateSectionsList(sectionsResult);
 
       final levelData = attemptData['levels'] is Map
           ? Map<String, dynamic>.from(attemptData['levels'] as Map)
@@ -175,8 +251,8 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
       final levelName = levelData['nama']?.toString() ?? 'Level ${widget.levelNumber}';
 
       int selectedSectionNumber = widget.sectionNumber;
-      if (sectionData['id'] != null && sectionsList.isNotEmpty) {
-        final matchedSection = sectionsList.firstWhere(
+      if (sectionData['id'] != null && _sectionsList.isNotEmpty) {
+        final matchedSection = _sectionsList.firstWhere(
           (s) {
             final sId = s['id'] is int
                 ? s['id'] as int
@@ -340,18 +416,30 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
           });
         }
 
+        // Sort levels by id ascending to ensure Level 1 is index 0, Level 2 is index 1, etc.
+        parsedLevels.sort((a, b) {
+          final aId = a['id'] is int ? a['id'] as int : int.tryParse(a['id']?.toString() ?? '') ?? 0;
+          final bId = b['id'] is int ? b['id'] as int : int.tryParse(b['id']?.toString() ?? '') ?? 0;
+          return aId.compareTo(bId);
+        });
+
+        // Reassign levelNumber based on sorted order
+        for (var i = 0; i < parsedLevels.length; i++) {
+          parsedLevels[i]['levelNumber'] = i + 1;
+        }
+
         setState(() {
           _levelsList = parsedLevels;
-          // Find current level index by level id first, then fallback to level number.
+          // Find current level index by level id first.
           _currentLevelIndex = parsedLevels.indexWhere(
             (l) => l['id'] == _currentLevelId,
           );
           if (_currentLevelIndex == -1) {
-            _currentLevelIndex = parsedLevels.indexWhere(
-              (l) => l['levelNumber'] == widget.levelNumber,
-            );
+            _currentLevelIndex = 0;
           }
-          if (_currentLevelIndex == -1) _currentLevelIndex = 0;
+          if (_levelsList.isNotEmpty) {
+            _currentLevelId = _levelsList[_currentLevelIndex]['id'];
+          }
         });
 
         debugPrint(
@@ -454,7 +542,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Review belum tersedia karena soal belum dikerjakan',
+                    _errorMessage ?? 'Review belum tersedia karena soal belum dikerjakan',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 14,
@@ -515,7 +603,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                     _isDropdownOpen = !_isDropdownOpen;
                   });
                 },
-                onSelectSection: (section, title, number) {
+                onSelectSection: (section, title, number) async {
                   debugPrint(
                     '=== Section selected: $number, Title: $title ===',
                   );
@@ -532,7 +620,7 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                     _currentLevelId = null;
                   });
                   // Reload data untuk section yang dipilih
-                  _fetchLevelsForSection();
+                  await _fetchLevelsForSection();
                   _loadLevelData();
                 },
               ),
@@ -670,12 +758,35 @@ class _ReviewAttemptViewState extends State<ReviewAttemptView> {
                 )
               else
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    _attemptData == null
-                        ? 'Belum ada data attempt. Silakan kerjakan quiz terlebih dahulu.'
-                        : 'Tidak ada soal ditemukan untuk level ini',
-                    style: GoogleFonts.inter(color: Colors.grey),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.assignment_late_outlined,
+                        size: 60,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Review Belum Tersedia',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Kamu belum mengerjakan quiz untuk level ini.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 

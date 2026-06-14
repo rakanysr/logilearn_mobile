@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:logilearn/services/api_service.dart';
 
 class SectionDropdownButton extends StatefulWidget {
@@ -107,74 +108,75 @@ class _SectionDropdownButtonState extends State<SectionDropdownButton> {
 
   @override
   Widget build(BuildContext context) {
+    final sectionColor = _getSectionColor(widget.sectionNumber);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Column(
         children: [
-          GestureDetector(
-            onTap: widget.onToggleDropdown,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                color: _getSectionColor(widget.sectionNumber),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.selectedSection.toUpperCase(),
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.selectedTitle,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 2,
-                        ),
-                      ],
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: widget.onToggleDropdown,
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 18,
+                  horizontal: 20,
+                ),
+                decoration: BoxDecoration(
+                  color: sectionColor,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: sectionColor.withValues(
+                        alpha: 0.3,
+                      ),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 1,
-                    height: 30,
-                    color: Colors.white.withValues(alpha: 0.3),
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  // Chevron icon
-                  Icon(
-                    widget.isDropdownOpen
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ],
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.selectedSection.toUpperCase(),
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          Text(
+                            widget.selectedTitle,
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      widget.isDropdownOpen
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -183,55 +185,41 @@ class _SectionDropdownButtonState extends State<SectionDropdownButton> {
           if (widget.isDropdownOpen) ...[
             const SizedBox(height: 8),
             Material(
-              elevation: 24,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF363636),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: _isLoading
-                    ? const Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        ),
-                      )
-                    : Column(
-                        children: _sections.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final section = entry.value;
-
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              bottom: index == _sections.length - 1 ? 0 : 12,
-                            ),
-                            child: _DropdownItem(
-                              section:
-                                  section['section'] ?? 'SECTION ${index + 1}',
-                              title: section['title'] ?? 'LOGIKA',
-                              color:
-                                  section['color'] ?? const Color(0xFF2977FF),
-                              sectionNumber: index + 1,
-                              onTap: () => widget.onSelectSection(
-                                'Section ${index + 1}, Level 1',
-                                section['title'] ?? 'LOGIKA',
-                                index + 1,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+              color: Colors.transparent,
+              elevation: 8,
+              borderRadius: BorderRadius.circular(18),
+              child: _isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: CircularProgressIndicator(color: Colors.white),
                       ),
-              ),
+                    )
+                  : Column(
+                      children: _sections.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final section = entry.value;
+
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            bottom: index == _sections.length - 1 ? 0 : 8.0,
+                          ),
+                          child: _DropdownItem(
+                            section:
+                                section['section'] ?? 'SECTION ${index + 1}',
+                            title: section['title'] ?? 'LOGIKA',
+                            color:
+                                section['color'] ?? const Color(0xFF2977FF),
+                            sectionNumber: index + 1,
+                            onTap: () => widget.onSelectSection(
+                              'Section ${index + 1}, Level 1',
+                              section['title'] ?? 'LOGIKA',
+                              index + 1,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
             ),
           ],
         ],
@@ -257,45 +245,51 @@ class _DropdownItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              section,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            vertical: 18,
+            horizontal: 20,
+          ),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(
+                  alpha: 0.3,
+                ),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                section,
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:logilearn/services/api_service.dart';
+import 'package:logilearn/widget/bottombar.dart';
 
 class LeaderboardView extends StatefulWidget {
   const LeaderboardView({super.key});
@@ -102,6 +103,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         scrolledUnderElevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black87),
+        automaticallyImplyLeading: false,
       ),
       body: RefreshIndicator(
         onRefresh: _fetchLeaderboard,
@@ -251,6 +253,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                         ],
                       ),
       ),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 1),
     );
   }
 

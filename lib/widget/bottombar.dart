@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:logilearn/view/account_view.dart';
 import 'package:logilearn/view/attempt_history_view.dart';
 import 'package:logilearn/view/home_view.dart';
+import 'package:logilearn/view/leaderboard_view.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -22,10 +23,16 @@ class BottomNavBar extends StatelessWidget {
       case 1:
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const AttemptHistoryView()),
+          MaterialPageRoute(builder: (context) => const LeaderboardView()),
         );
         break;
       case 2:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AttemptHistoryView()),
+        );
+        break;
+      case 3:
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const AccountView()),
@@ -65,6 +72,11 @@ class BottomNavBar extends StatelessWidget {
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'Beranda',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.leaderboard_outlined),
+            activeIcon: Icon(Icons.leaderboard),
+            label: 'Leaderboard',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment_turned_in_outlined),

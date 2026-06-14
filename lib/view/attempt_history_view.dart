@@ -156,7 +156,7 @@ class _AttemptHistoryViewState extends State<AttemptHistoryView> {
         centerTitle: true,
       ),
       body: _buildBody(),
-      bottomNavigationBar: const BottomNavBar(currentIndex: 1),
+      bottomNavigationBar: const BottomNavBar(currentIndex: 2),
     );
   }
 
